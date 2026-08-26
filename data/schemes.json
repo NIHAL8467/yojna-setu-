@@ -1,0 +1,292 @@
+[
+  {
+    "id": "micro_credit_finance",
+    "code": "MCF",
+    "name": "Micro Credit Finance Scheme",
+    "nameHi": "लघु ऋण वित्त योजना (Micro Credit Finance)",
+    "category": "business",
+    "description": "Financial assistance for small income-generating micro-enterprises and self-help groups for SC beneficiaries.",
+    "descriptionHi": "अनुसूचित जाति के लाभार्थियों के लिए छोटे आय-उत्पादक सूक्ष्म उद्यमों और स्वयं सहायता समूहों के लिए वित्तीय सहायता।",
+    "targetAudience": "Micro-entrepreneurs, street vendors, small artisans, and SHG members living below double the poverty line.",
+    "targetAudienceHi": "सूक्ष्म उद्यमी, छोटे विक्रेता, कारीगर और स्वयं सहायता समूह।",
+    "eligibility": {
+      "maxFamilyIncome": 500000,
+      "minAge": 18,
+      "maxAge": 60,
+      "projectTypes": ["business", "artisan", "retail", "services"],
+      "maxProjectCost": "[TODO: Confirm exact limit from nsfdc.nic.in - standard ~₹1,50,000]",
+      "maxProjectCostNumeric": 150000,
+      "educationRequired": "none",
+      "specialFocus": ["women", "rural", "shg"]
+    },
+    "terms": {
+      "maxLoanAmount": "[TODO: Confirm cap from nsfdc.nic.in - e.g. up to ₹1,40,000 or 90%]",
+      "maxLoanAmountNumeric": 140000,
+      "interestRatePercent": "[TODO: Confirm interest rate from nsfdc.nic.in - e.g. 5% p.a.]",
+      "interestRatePercentNumeric": 5.0,
+      "interestRebateWomenPercent": 0.5,
+      "maxTenureMonths": "[TODO: Confirm tenure from nsfdc.nic.in - e.g. 36 months]",
+      "maxTenureMonthsNumeric": 36,
+      "moratoriumMonths": "[TODO: Confirm moratorium period - e.g. 3 months]",
+      "moratoriumMonthsNumeric": 3,
+      "nsfdcSharePercent": "[TODO: Confirm share % - e.g. 90%]",
+      "nsfdcSharePercentNumeric": 90,
+      "promoterSharePercent": 5,
+      "scaSharePercent": 5
+    },
+    "requiredDocuments": [
+      "SC Caste Certificate issued by competent authority",
+      "Annual Family Income Certificate",
+      "Aadhaar Card / Voter ID for KYC",
+      "Bank Account details / Passbook copy",
+      "Micro-business activity proposal / brief estimate"
+    ],
+    "highlights": [
+      "Very low interest rate for vulnerable entrepreneurs",
+      "No heavy collateral required for micro units",
+      "Special 0.5% interest rebate for women entrepreneurs"
+    ]
+  },
+  {
+    "id": "term_loan_scheme",
+    "code": "TLS",
+    "name": "Term Loan Scheme for SC Entrepreneurs",
+    "nameHi": "अनुसूचित जाति उद्यमियों हेतु टर्म लोन योजना",
+    "category": "business",
+    "description": "Substantial financial assistance for viable and bankable projects in industry, services, transport, and trading sectors.",
+    "descriptionHi": "उद्योग, सेवा, परिवहन और व्यापार क्षेत्रों में व्यवहार्य परियोजनाओं के लिए वित्तीय सहायता।",
+    "targetAudience": "Individual SC entrepreneurs, partnerships, and cooperative societies establishing commercial enterprises.",
+    "targetAudienceHi": "वाणिज्यिक उद्यम स्थापित करने वाले व्यक्तिगत एससी उद्यमी एवं समितियां।",
+    "eligibility": {
+      "maxFamilyIncome": 500000,
+      "minAge": 18,
+      "maxAge": 65,
+      "projectTypes": ["business", "manufacturing", "services", "transport", "trading"],
+      "maxProjectCost": "[TODO: Confirm cap from nsfdc.nic.in - e.g. up to ₹50,00,000]",
+      "maxProjectCostNumeric": 5000000,
+      "educationRequired": "10th_pass",
+      "specialFocus": ["first_time_entrepreneurs", "commercial_transport"]
+    },
+    "terms": {
+      "maxLoanAmount": "[TODO: Confirm cap from nsfdc.nic.in - e.g. up to ₹50,00,000 or 90%]",
+      "maxLoanAmountNumeric": 4500000,
+      "interestRatePercent": "[TODO: Confirm slab rates from nsfdc.nic.in - e.g. 6% to 9% p.a. based on loan slab]",
+      "interestRatePercentNumeric": 6.5,
+      "interestRebateWomenPercent": 0.5,
+      "maxTenureMonths": "[TODO: Confirm max tenure - e.g. 60 to 120 months (5-10 years)]",
+      "maxTenureMonthsNumeric": 60,
+      "moratoriumMonths": "[TODO: Confirm implementation moratorium - e.g. 6 months to 12 months]",
+      "moratoriumMonthsNumeric": 6,
+      "nsfdcSharePercent": "[TODO: Confirm share % - e.g. up to 90%]",
+      "nsfdcSharePercentNumeric": 90,
+      "promoterSharePercent": 5,
+      "scaSharePercent": 5
+    },
+    "requiredDocuments": [
+      "SC Caste Certificate",
+      "Income Certificate / IT Return / Self declaration",
+      "Detailed Project Report (DPR) / Quotations for machinery",
+      "Aadhaar Card and PAN Card",
+      "Bank Account details & CIBIL report",
+      "Premises lease or ownership document"
+    ],
+    "highlights": [
+      "Supports project funding up to ₹50 Lakhs",
+      "Extended repayment tenure up to 5-10 years",
+      "Moratorium period during business setup and gestation"
+    ]
+  },
+  {
+    "id": "educational_loan_scheme",
+    "code": "ELS",
+    "name": "Educational Loan Scheme (ELS)",
+    "nameHi": "शिक्षा ऋण योजना (Educational Loan Scheme)",
+    "category": "education",
+    "description": "Financial support to meritorious SC students for pursuing recognized professional and technical courses in India and abroad.",
+    "descriptionHi": "भारत और विदेश में व्यावसायिक व तकनीकी पाठ्यक्रमों के लिए एससी छात्रों को रियायती शिक्षा ऋण।",
+    "targetAudience": "SC students who have secured admission in professional/technical higher education institutions.",
+    "targetAudienceHi": "उच्च शिक्षा संस्थानों में प्रवेश पाने वाले अनुसूचित जाति के छात्र।",
+    "eligibility": {
+      "maxFamilyIncome": 500000,
+      "minAge": 17,
+      "maxAge": 35,
+      "projectTypes": ["education"],
+      "maxProjectCost": "[TODO: Confirm course fee cap from nsfdc.nic.in - e.g. ₹20 Lakhs in India / ₹40 Lakhs Abroad]",
+      "maxProjectCostNumeric": 2000000,
+      "educationRequired": "12th_pass",
+      "specialFocus": ["higher_education", "stem_medical_management", "female_students"]
+    },
+    "terms": {
+      "maxLoanAmount": "[TODO: Confirm cap from nsfdc.nic.in - e.g. up to ₹20,00,000 for domestic studies]",
+      "maxLoanAmountNumeric": 2000000,
+      "interestRatePercent": "[TODO: Confirm student rate - e.g. 4% p.a. (3.5% for girl students)]",
+      "interestRatePercentNumeric": 4.0,
+      "interestRebateWomenPercent": 0.5,
+      "maxTenureMonths": "[TODO: Confirm repayment period - e.g. 120 months (10 years) post moratorium]",
+      "maxTenureMonthsNumeric": 120,
+      "moratoriumMonths": "[TODO: Course duration + 6 months to 1 year moratorium]",
+      "moratoriumMonthsNumeric": 12,
+      "nsfdcSharePercent": "[TODO: 90% to 100% depending on guidelines]",
+      "nsfdcSharePercentNumeric": 90,
+      "promoterSharePercent": 5,
+      "scaSharePercent": 5
+    },
+    "requiredDocuments": [
+      "SC Caste Certificate of student",
+      "Family Income Certificate",
+      "Admission letter / Proof of selection in approved course",
+      "Fee structure certified by institute",
+      "Mark sheets of 10th, 12th / Graduation",
+      "Co-borrower (Parent/Guardian) KYC and income details"
+    ],
+    "highlights": [
+      "Highly subsidized 4% interest rate (3.5% for women students)",
+      "Zero repayment during study duration plus grace moratorium period",
+      "Covers tuition fees, books, equipment, hostel & laptop"
+    ]
+  },
+  {
+    "id": "mahila_samriddhi_yojana",
+    "code": "MSY",
+    "name": "Mahila Samriddhi Yojana",
+    "nameHi": "महिला समृद्धि योजना (Mahila Samriddhi Yojana)",
+    "category": "business",
+    "description": "Exclusive micro-financing and economic empowerment scheme tailored for women entrepreneurs from the SC community.",
+    "descriptionHi": "अनुसूचित जाति की महिला उद्यमियों के आर्थिक सशक्तिकरण के लिए विशेष सूक्ष्म वित्त पोषण योजना।",
+    "targetAudience": "SC women individuals and women Self Help Groups (SHGs) taking up income generation activities.",
+    "targetAudienceHi": "आय-उत्पादक गतिविधियों में लगी अनुसूचित जाति की महिला उद्यमी एवं महिला स्वयं सहायता समूह।",
+    "eligibility": {
+      "maxFamilyIncome": 500000,
+      "minAge": 18,
+      "maxAge": 60,
+      "projectTypes": ["business", "artisan", "retail", "services", "agriculture"],
+      "maxProjectCost": "[TODO: Confirm limit from nsfdc.nic.in - e.g. ₹1,40,000 per beneficiary]",
+      "maxProjectCostNumeric": 140000,
+      "educationRequired": "none",
+      "specialFocus": ["women_only", "shg", "tailoring_handicrafts"]
+    },
+    "terms": {
+      "maxLoanAmount": "[TODO: Confirm cap from nsfdc.nic.in - e.g. ₹1,40,000]",
+      "maxLoanAmountNumeric": 140000,
+      "interestRatePercent": "[TODO: Confirm concessional rate - e.g. 4% p.a.]",
+      "interestRatePercentNumeric": 4.0,
+      "interestRebateWomenPercent": 0.0,
+      "maxTenureMonths": "[TODO: Confirm tenure - e.g. 36 to 48 months]",
+      "maxTenureMonthsNumeric": 36,
+      "moratoriumMonths": "[TODO: Confirm moratorium - e.g. 3 months]",
+      "moratoriumMonthsNumeric": 3,
+      "nsfdcSharePercent": "[TODO: Confirm share % - e.g. 95%]",
+      "nsfdcSharePercentNumeric": 95,
+      "promoterSharePercent": 2.5,
+      "scaSharePercent": 2.5
+    },
+    "requiredDocuments": [
+      "SC Caste Certificate",
+      "Family Income Certificate",
+      "Aadhaar Card and Voter ID",
+      "Bank Account Passbook with IFSC",
+      "Passport size photographs"
+    ],
+    "highlights": [
+      "100% targeted to women entrepreneurs",
+      "Lowest micro-finance interest rate at 4% p.a.",
+      "Minimal promoter margin contribution required"
+    ]
+  },
+  {
+    "id": "green_business_scheme",
+    "code": "GBS",
+    "name": "Green Business Scheme (GBS)",
+    "nameHi": "ग्रीन बिजनेस योजना (Green Business Scheme)",
+    "category": "business",
+    "description": "Financial support for SC entrepreneurs to establish eco-friendly and climate-conscious business ventures such as e-rickshaws, solar units, and waste recycling.",
+    "descriptionHi": "ई-रिक्शा, सौर ऊर्जा उपकरण, अपशिष्ट पुनर्चक्रण जैसे पर्यावरण अनुकूल उद्यमों हेतु वित्तीय सहायता।",
+    "targetAudience": "SC individuals starting green enterprises like electric mobility, solar pumping/lighting, and organic farming.",
+    "targetAudienceHi": "इलेक्ट्रिक वाहन, सौर ऊर्जा और पर्यावरण अनुकूल व्यवसाय शुरू करने वाले एससी उद्यमी।",
+    "eligibility": {
+      "maxFamilyIncome": 500000,
+      "minAge": 18,
+      "maxAge": 60,
+      "projectTypes": ["green_energy", "transport", "business", "agriculture"],
+      "maxProjectCost": "[TODO: Confirm limit from nsfdc.nic.in - e.g. up to ₹30,00,000]",
+      "maxProjectCostNumeric": 3000000,
+      "educationRequired": "none",
+      "specialFocus": ["e_rickshaw", "solar_units", "waste_management"]
+    },
+    "terms": {
+      "maxLoanAmount": "[TODO: Confirm cap from nsfdc.nic.in - e.g. up to ₹27,00,000 or 90%]",
+      "maxLoanAmountNumeric": 2700000,
+      "interestRatePercent": "[TODO: Confirm green rebate rate - e.g. 5.5% to 6.5% p.a.]",
+      "interestRatePercentNumeric": 6.0,
+      "interestRebateWomenPercent": 0.5,
+      "maxTenureMonths": "[TODO: Confirm tenure - e.g. 60 months]",
+      "maxTenureMonthsNumeric": 60,
+      "moratoriumMonths": "[TODO: Confirm moratorium - e.g. 6 months]",
+      "moratoriumMonthsNumeric": 6,
+      "nsfdcSharePercent": "[TODO: Confirm share % - e.g. 90%]",
+      "nsfdcSharePercentNumeric": 90,
+      "promoterSharePercent": 5,
+      "scaSharePercent": 5
+    },
+    "requiredDocuments": [
+      "SC Caste Certificate",
+      "Income Certificate",
+      "Quotation of Green Equipment / E-rickshaw / Solar panel",
+      "Driving License (if applying for E-rickshaw/E-cart)",
+      "Bank Account details and Aadhaar Card"
+    ],
+    "highlights": [
+      "Green incentive interest concession",
+      "High demand sectors: E-rickshaw, rooftop solar, bio-fertilizers",
+      "Subsidy linkages with national green missions"
+    ]
+  },
+  {
+    "id": "swachhta_udayami_yojana",
+    "code": "SUY",
+    "name": "Swachhta Udayami Yojana (Sanitation Workers)",
+    "nameHi": "स्वच्छता उद्यमी योजना (Swachhta Udayami Yojana)",
+    "category": "business",
+    "description": "Special scheme to provide financial assistance for procurement of mechanized sanitation equipment and sewer cleaning vehicles.",
+    "descriptionHi": "स्वच्छता कार्य के मशीनीकरण, सीवर सफाई वाहनों और कचरा प्रबंधन उपकरणों की खरीद हेतु विशेष योजना।",
+    "targetAudience": "Manual scavengers, safai karamcharis, and SC beneficiaries engaging in hygienic mechanical sanitation.",
+    "targetAudienceHi": "सफाई कर्मचारी एवं स्वच्छता क्षेत्र में मशीनीकृत उद्यम लगाने वाले एससी लाभार्थी।",
+    "eligibility": {
+      "maxFamilyIncome": 500000,
+      "minAge": 18,
+      "maxAge": 60,
+      "projectTypes": ["sanitation", "transport", "services", "business"],
+      "maxProjectCost": "[TODO: Confirm limit from nsfdc.nic.in - e.g. up to ₹50,00,000 for mechanized units]",
+      "maxProjectCostNumeric": 5000000,
+      "educationRequired": "none",
+      "specialFocus": ["safai_karamcharis", "mechanized_cleaning", "safety_gear"]
+    },
+    "terms": {
+      "maxLoanAmount": "[TODO: Confirm cap from nsfdc.nic.in - e.g. up to ₹45,00,000 or 90%]",
+      "maxLoanAmountNumeric": 4500000,
+      "interestRatePercent": "[TODO: Confirm concessional rate - e.g. 4% to 6% p.a.]",
+      "interestRatePercentNumeric": 4.5,
+      "interestRebateWomenPercent": 0.5,
+      "maxTenureMonths": "[TODO: Confirm tenure - e.g. 60 to 84 months]",
+      "maxTenureMonthsNumeric": 60,
+      "moratoriumMonths": "[TODO: Confirm moratorium - e.g. 6 months]",
+      "moratoriumMonthsNumeric": 6,
+      "nsfdcSharePercent": "[TODO: Confirm share % - e.g. 90%]",
+      "nsfdcSharePercentNumeric": 90,
+      "promoterSharePercent": 5,
+      "scaSharePercent": 5
+    },
+    "requiredDocuments": [
+      "SC Certificate / Safai Karamchari identification",
+      "Income Certificate",
+      "Machinery / Vacuum suction machine quotation",
+      "Aadhaar Card and Bank Account",
+      "Municipal / Gram Panchayat work readiness or consent letter"
+    ],
+    "highlights": [
+      "Eliminates hazardous manual cleaning through mechanization",
+      "High capital subsidy and lowest interest rates",
+      "Priority sanctioning through State Channelising Agencies"
+    ]
+  }
+]
