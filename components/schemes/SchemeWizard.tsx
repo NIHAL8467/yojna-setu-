@@ -1,10 +1,16 @@
 'use client';
 
-import React, { useState } from 'react';
-import type { SchemeFilterInput, SchemeMatchResult, EducationLevel, ApplicantCategory } from '@/types';
+import React, { useState, useMemo } from 'react';
+import type { 
+  SchemeMatchResult, 
+  EducationLevel, 
+  SocialCategory, 
+  Gender, 
+  UserProfile 
+} from '@/types';
 import { matchSchemes } from '@/lib/rules-engine';
+import { getStandard2LEmi, CATEGORY_CONCESSIONS } from '@/lib/emi-calculator';
 import { useApp } from '@/context/AppContext';
-import StepIndicator from '@/components/ui/StepIndicator';
 import SchemeCard from './SchemeCard';
 import SchemeDetailsModal from './SchemeDetailsModal';
 import { 
@@ -16,492 +22,550 @@ import {
   Scissors, 
   IndianRupee, 
   ArrowRight, 
-  ArrowLeft, 
   RotateCcw, 
   SlidersHorizontal,
   Info,
-  Check
+  Check,
+  CheckCircle2,
+  Users,
+  MapPin,
+  Calendar,
+  UserCheck,
+  Briefcase,
+  Layers,
+  ChevronRight
 } from 'lucide-react';
 
+const INDIAN_STATES = [
+  'All India',
+  'Andhra Pradesh',
+  'Arunachal Pradesh',
+  'Assam',
+  'Bihar',
+  'Chhattisgarh',
+  'Delhi',
+  'Goa',
+  'Gujarat',
+  'Haryana',
+  'Himachal Pradesh',
+  'Jharkhand',
+  'Karnataka',
+  'Kerala',
+  'Madhya Pradesh',
+  'Maharashtra',
+  'Manipur',
+  'Meghalaya',
+  'Mizoram',
+  'Nagaland',
+  'Odisha',
+  'Punjab',
+  'Rajasthan',
+  'Sikkim',
+  'Tamil Nadu',
+  'Telangana',
+  'Tripura',
+  'Uttar Pradesh',
+  'Uttarakhand',
+  'West Bengal',
+  'Jammu & Kashmir',
+  'Ladakh',
+  'Puducherry',
+  'Chandigarh',
+];
+
 export default function SchemeWizard() {
-  const { t, locale } = useApp();
-  const [currentStep, setCurrentStep] = useState(1);
+  const { t, locale, userProfile, updateUserProfile, userCategory, setUserCategory } = useApp();
   const [selectedResultForModal, setSelectedResultForModal] = useState<SchemeMatchResult | null>(null);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
-  // Form State
-  const [formData, setFormData] = useState<SchemeFilterInput>({
-    projectType: 'business',
-    estimatedCost: 150000,
-    familyIncome: 250000,
-    educationLevel: '10th_pass',
-    applicantCategory: 'male',
-  });
-
-  const [hasCalculated, setHasCalculated] = useState(false);
-  const [results, setResults] = useState<SchemeMatchResult[]>([]);
-
-  // Project Type Options
-  const projectTypes = [
+  // Project Type (Occupation) options
+  const occupations = [
     {
       id: 'business',
-      label: t('schemes.projectTypeBusiness'),
-      desc: 'Small shop, grocery, service center, retail kiosk',
+      label: locale === 'hi' ? 'लघु व्यापार / दुकान' : 'Small Business / Retail',
+      desc: 'Grocery, retail kiosk, micro-trading, service center',
       icon: Store,
       color: 'text-blue-700 bg-blue-50 border-blue-200',
     },
     {
-      id: 'education',
-      label: t('schemes.projectTypeEducation'),
-      desc: 'Engineering, Medical, MBA, Tech courses in India & Abroad',
-      icon: GraduationCap,
-      color: 'text-purple-700 bg-purple-50 border-purple-200',
+      id: 'artisan',
+      label: locale === 'hi' ? 'कारीगर / हस्तशिल्प' : 'Artisan & Handicrafts',
+      desc: 'Tailoring, leather craft, pottery, weaving, metal work',
+      icon: Scissors,
+      color: 'text-rose-700 bg-rose-50 border-rose-200',
     },
     {
       id: 'transport',
-      label: t('schemes.projectTypeTransport'),
-      desc: 'Auto-rickshaw, commercial taxi, delivery vehicle, e-cart',
+      label: locale === 'hi' ? 'वाणिज्यिक वाहन / ई-रिक्शा' : 'Transport / Commercial Vehicle',
+      desc: 'E-rickshaw, auto-rickshaw, light goods carrier, taxi',
       icon: Truck,
       color: 'text-amber-700 bg-amber-50 border-amber-200',
     },
     {
       id: 'green_energy',
-      label: t('schemes.projectTypeGreen'),
-      desc: 'Solar rooftop, E-rickshaw, organic farming, waste recycling',
+      label: locale === 'hi' ? 'हरित ऊर्जा / सौर' : 'Green Energy & Solar',
+      desc: 'Solar rooftop, clean energy equipment, recycling unit',
       icon: Leaf,
       color: 'text-emerald-700 bg-emerald-50 border-emerald-200',
     },
     {
       id: 'sanitation',
-      label: t('schemes.projectTypeSanitation'),
-      desc: 'Vacuum suction machine, sewer cleaning equipment',
+      label: locale === 'hi' ? 'स्वच्छता / अपशिष्ट प्रबंधन' : 'Mechanized Sanitation',
+      desc: 'Vacuum suction machine, sewer cleaning, sanitation vehicle',
       icon: Sparkles,
       color: 'text-teal-700 bg-teal-50 border-teal-200',
     },
     {
-      id: 'artisan',
-      label: t('schemes.projectTypeArtisan'),
-      desc: 'Tailoring, leather craft, pottery, weaving, handicrafts',
-      icon: Scissors,
-      color: 'text-rose-700 bg-rose-50 border-rose-200',
+      id: 'education',
+      label: locale === 'hi' ? 'उच्च व व्यावसायिक शिक्षा' : 'Higher & Professional Education',
+      desc: 'Engineering, Medical, MBA, Polytechnic, degree courses',
+      icon: GraduationCap,
+      color: 'text-purple-700 bg-purple-50 border-purple-200',
     },
   ];
 
-  // Presets for Cost & Income
   const costPresets = [
-    { label: '₹50,000 (Micro)', value: 50000 },
-    { label: '₹1.50 Lakhs (Standard)', value: 150000 },
-    { label: '₹5.00 Lakhs (Medium)', value: 500000 },
-    { label: '₹10.00 Lakhs (Higher)', value: 1000000 },
-    { label: '₹25.00 Lakhs (Commercial)', value: 2500000 },
+    { label: '₹50,000', value: 50000 },
+    { label: '₹1.50 Lakhs', value: 150000 },
+    { label: '₹2.00 Lakhs (Standard)', value: 200000, highlight: true },
+    { label: '₹5.00 Lakhs', value: 500000 },
+    { label: '₹10.00 Lakhs', value: 1000000 },
   ];
 
   const incomePresets = [
-    { label: '₹1.20 Lakhs/yr (BPL)', value: 120000 },
-    { label: '₹2.50 Lakhs/yr', value: 250000 },
-    { label: '₹3.50 Lakhs/yr', value: 350000 },
-    { label: '₹4.80 Lakhs/yr (Near Limit)', value: 480000 },
+    { label: '₹1.20L (BPL)', value: 120000 },
+    { label: '₹2.50L (Standard)', value: 250000 },
+    { label: '₹3.50L', value: 350000 },
+    { label: '₹5.00L (Govt Ceiling)', value: 500000 },
   ];
 
-  const handleNext = () => {
-    if (currentStep < 4) {
-      setCurrentStep((prev) => prev + 1);
-    } else {
-      executeMatching();
-    }
-  };
+  const categories: SocialCategory[] = ['GENERAL', 'OBC', 'SC', 'ST'];
 
-  const handleBack = () => {
-    if (currentStep > 1) {
-      setCurrentStep((prev) => prev - 1);
-    }
-  };
-
-  const executeMatching = () => {
-    const res = matchSchemes(formData);
-    setResults(res);
-    setHasCalculated(true);
-  };
-
-  const handleReset = () => {
-    setFormData({
-      projectType: 'business',
-      estimatedCost: 150000,
-      familyIncome: 250000,
-      educationLevel: '10th_pass',
-      applicantCategory: 'male',
+  // AUTOMATIC DETERMINISTIC SCHEME MATCHING (useMemo: ZERO state updates, ZERO infinite loops)
+  const matchResults: SchemeMatchResult[] = useMemo(() => {
+    return matchSchemes({
+      projectType: userProfile.occupation,
+      estimatedCost: userProfile.projectCost,
+      familyIncome: userProfile.income,
+      educationLevel: userProfile.educationLevel,
+      applicantCategory: userProfile.gender === 'female' ? 'female' : 'male',
+      age: userProfile.age,
+      state: userProfile.state,
+      gender: userProfile.gender,
+      category: userProfile.category,
     });
-    setHasCalculated(false);
-    setCurrentStep(1);
+  }, [userProfile]);
+
+  const eligibleCount = useMemo(() => {
+    return matchResults.filter((r) => r.isEligible).length;
+  }, [matchResults]);
+
+  const standard2LEmi = getStandard2LEmi(userProfile.category);
+  const subventionAmount = Math.max(0, 6499 - standard2LEmi);
+
+  const handleResetProfile = () => {
+    updateUserProfile({
+      age: 28,
+      state: 'Delhi',
+      gender: 'male',
+      occupation: 'business',
+      income: 250000,
+      category: 'OBC',
+      projectCost: 200000,
+      educationLevel: '10th_pass',
+    });
   };
 
   return (
     <div id="scheme-wizard-container" className="max-w-5xl mx-auto space-y-6">
-      {/* Wizard Header */}
-      <div className="text-center space-y-2 mb-6">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-blue-950 tracking-tight">
-          {t('schemes.title')}
+      {/* Header */}
+      <div className="text-center space-y-2 mb-4">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#0F294A] tracking-tight leading-tight">
+          {locale === 'hi' 
+            ? 'अपनी पात्रता व श्रेणी अनुसार योजनाएं खोजें'
+            : 'Find Schemes Matched to Your Profile & Category'}
         </h1>
-        <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto">
-          {t('schemes.subtitle')}
+        <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto leading-relaxed">
+          {locale === 'hi'
+            ? 'आयु (Age), राज्य (State), लिंग (Gender), व्यवसाय (Occupation), आय (Income) और जाति वर्ग (Category) चुनें — सिस्टम स्वतः उपयुक्त योजनाएं निकालेगा।'
+            : 'Select your age, state, gender, occupation, family income, and social category. System automatically computes eligible schemes with concessional EMIs.'}
         </p>
       </div>
 
-      {!hasCalculated ? (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-8">
-          <StepIndicator
-            currentStep={currentStep}
-            totalSteps={4}
-            onStepClick={(s) => setCurrentStep(s)}
-            locale={locale}
-          />
+      {/* 1. SOCIAL CATEGORY / CASTE SELECTION BAR (Gen: 6499, OBC: 5999, SC: 5499, ST: 4999) */}
+      <div className="bg-white rounded-2xl border border-blue-200 p-5 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <span className="text-xs font-bold text-blue-950 uppercase tracking-wider flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-blue-800" />
+              <span>1. Social Category (Caste) — Concessional Subvention Benchmark</span>
+            </span>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Govt affirmative EMI subvention for standard ₹2,00,000 (2 Lakhs) loan:
+            </p>
+          </div>
+          <span className="text-xs font-bold px-3 py-1 rounded-md bg-blue-50 text-blue-950 border border-blue-200 self-start sm:self-auto">
+            Selected: <span className="text-blue-700 underline">{userProfile.category}</span>
+          </span>
+        </div>
 
-          {/* STEP 1: Project Type */}
-          {currentStep === 1 && (
-            <div className="space-y-5 animate-in fade-in duration-200">
-              <div className="border-b border-slate-100 pb-3">
-                <h2 className="text-lg font-bold text-blue-950">
-                  {t('schemes.step1Title')}
-                </h2>
-                <p className="text-xs text-slate-600">
-                  {t('schemes.step1Desc')}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                {projectTypes.map((item) => {
-                  const Icon = item.icon;
-                  const isSelected = formData.projectType === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      id={`project-type-${item.id}`}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, projectType: item.id })}
-                      className={`p-4 rounded-xl border-2 text-left transition-all flex flex-col justify-between min-h-[110px] cursor-pointer ${
-                        isSelected
-                          ? 'border-blue-900 bg-blue-50/70 shadow-xs ring-2 ring-blue-900/10'
-                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className={`p-2.5 rounded-lg border ${item.color}`}>
-                          <Icon className="w-5 h-5" />
-                        </div>
-                        {isSelected && (
-                          <span className="w-6 h-6 rounded-full bg-blue-900 text-amber-300 flex items-center justify-center">
-                            <Check className="w-4 h-4 stroke-[3]" />
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-3">
-                        <p className="text-sm font-bold text-blue-950">{item.label}</p>
-                        <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{item.desc}</p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* STEP 2: Project Cost */}
-          {currentStep === 2 && (
-            <div className="space-y-6 animate-in fade-in duration-200 max-w-2xl mx-auto">
-              <div className="border-b border-slate-100 pb-3 text-center sm:text-left">
-                <h2 className="text-lg font-bold text-blue-950">
-                  {t('schemes.step2Title')}
-                </h2>
-                <p className="text-xs text-slate-600">
-                  {t('schemes.step2Desc')}
-                </p>
-              </div>
-
-              {/* Display Box */}
-              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 text-center">
-                <span className="text-xs font-semibold uppercase text-blue-800 tracking-wider">
-                  Selected Financial Requirement
-                </span>
-                <div className="text-3xl sm:text-4xl font-extrabold text-blue-950 mt-1 flex items-center justify-center gap-1">
-                  <IndianRupee className="w-7 h-7 text-blue-900" />
-                  <span>{formData.estimatedCost.toLocaleString('en-IN')}</span>
-                </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  ({(formData.estimatedCost / 100000).toFixed(2)} Lakh Rupees)
-                </p>
-              </div>
-
-              {/* Slider */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs text-slate-500 font-medium">
-                  <span>₹25,000</span>
-                  <span>₹50,00,000 (50 Lakhs Max)</span>
-                </div>
-                <input
-                  id="input-project-cost-slider"
-                  type="range"
-                  min="25000"
-                  max="5000000"
-                  step="25000"
-                  value={formData.estimatedCost}
-                  onChange={(e) =>
-                    setFormData({ ...formData, estimatedCost: Number(e.target.value) })
-                  }
-                  className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-900"
-                />
-              </div>
-
-              {/* Quick Select Presets */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-                  {t('schemes.quickSelectPresets')}
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {costPresets.map((preset) => (
-                    <button
-                      key={preset.value}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, estimatedCost: preset.value })}
-                      className={`px-3 py-2 text-xs font-semibold rounded-lg border transition-all min-h-[38px] cursor-pointer ${
-                        formData.estimatedCost === preset.value
-                          ? 'bg-blue-900 text-white border-blue-900'
-                          : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-                      }`}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3: Annual Family Income */}
-          {currentStep === 3 && (
-            <div className="space-y-6 animate-in fade-in duration-200 max-w-2xl mx-auto">
-              <div className="border-b border-slate-100 pb-3 text-center sm:text-left">
-                <h2 className="text-lg font-bold text-blue-950">
-                  {t('schemes.step3Title')}
-                </h2>
-                <p className="text-xs text-slate-600">
-                  {t('schemes.step3Desc')}
-                </p>
-              </div>
-
-              {/* Display Box */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center">
-                <span className="text-xs font-semibold uppercase text-slate-600 tracking-wider">
-                  Annual Household Income
-                </span>
-                <div className="text-3xl sm:text-4xl font-extrabold text-blue-950 mt-1 flex items-center justify-center gap-1">
-                  <IndianRupee className="w-7 h-7 text-blue-900" />
-                  <span>{formData.familyIncome.toLocaleString('en-IN')}</span>
-                </div>
-                <p className="text-xs text-slate-500 mt-1">Per Annum (All Family Members)</p>
-              </div>
-
-              {/* Slider */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs text-slate-500 font-medium">
-                  <span>₹50,000</span>
-                  <span className="text-amber-700 font-bold">₹5,00,000 (NSFDC Ceiling)</span>
-                </div>
-                <input
-                  id="input-family-income-slider"
-                  type="range"
-                  min="50000"
-                  max="600000"
-                  step="10000"
-                  value={formData.familyIncome}
-                  onChange={(e) =>
-                    setFormData({ ...formData, familyIncome: Number(e.target.value) })
-                  }
-                  className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-900"
-                />
-              </div>
-
-              {/* Presets */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-                  {t('schemes.quickSelectPresets')}
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {incomePresets.map((preset) => (
-                    <button
-                      key={preset.value}
-                      type="button"
-                      onClick={() => setFormData({ ...formData, familyIncome: preset.value })}
-                      className={`px-3 py-2 text-xs font-semibold rounded-lg border transition-all min-h-[38px] cursor-pointer ${
-                        formData.familyIncome === preset.value
-                          ? 'bg-blue-900 text-white border-blue-900'
-                          : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
-                      }`}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Guideline Banner */}
-              <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-start gap-2.5 text-xs text-amber-900">
-                <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                <span>{t('schemes.incomeWarningLimit')}</span>
-              </div>
-            </div>
-          )}
-
-          {/* STEP 4: Applicant Category & Education */}
-          {currentStep === 4 && (
-            <div className="space-y-6 animate-in fade-in duration-200 max-w-2xl mx-auto">
-              <div className="border-b border-slate-100 pb-3 text-center sm:text-left">
-                <h2 className="text-lg font-bold text-blue-950">
-                  {t('schemes.step4Title')}
-                </h2>
-                <p className="text-xs text-slate-600">
-                  {t('schemes.step4Desc')}
-                </p>
-              </div>
-
-              {/* Category Radio Group */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-                  {t('schemes.genderLabel')}
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {[
-                    { id: 'male', label: t('schemes.genderMale') },
-                    { id: 'female', label: t('schemes.genderFemale') },
-                    { id: 'shg', label: t('schemes.genderShg') },
-                    { id: 'safai_karamchari', label: t('schemes.genderSafai') },
-                  ].map((cat) => (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() =>
-                        setFormData({ ...formData, applicantCategory: cat.id as ApplicantCategory })
-                      }
-                      className={`p-3.5 rounded-xl border text-left text-xs font-semibold flex items-center justify-between min-h-[48px] cursor-pointer ${
-                        formData.applicantCategory === cat.id
-                          ? 'border-blue-900 bg-blue-50 text-blue-950 font-bold ring-1 ring-blue-900'
-                          : 'border-slate-200 text-slate-700 hover:bg-slate-50'
-                      }`}
-                    >
-                      <span>{cat.label}</span>
-                      {formData.applicantCategory === cat.id && (
-                        <Check className="w-4 h-4 text-blue-900 shrink-0" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Education Level */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-                  {t('schemes.educationStatus')}
-                </label>
-                <select
-                  id="select-education-level"
-                  value={formData.educationLevel}
-                  onChange={(e) =>
-                    setFormData({ ...formData, educationLevel: e.target.value as EducationLevel })
-                  }
-                  className="w-full px-4 py-3 text-sm bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-900 focus:outline-none min-h-[48px] cursor-pointer"
-                >
-                  <option value="none">{t('schemes.eduNone')}</option>
-                  <option value="10th_pass">{t('schemes.edu10th')}</option>
-                  <option value="12th_pass">{t('schemes.edu12th')}</option>
-                  <option value="graduate">{t('schemes.eduGraduate')}</option>
-                  <option value="post_graduate">{t('schemes.eduPostGraduate')}</option>
-                </select>
-              </div>
-            </div>
-          )}
-
-          {/* Navigation Controls */}
-          <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between gap-4">
-            {currentStep > 1 ? (
+        {/* 4 Category Pills */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {categories.map((cat) => {
+            const isSelected = userProfile.category === cat;
+            const benchmark = getStandard2LEmi(cat);
+            const concession = CATEGORY_CONCESSIONS[cat];
+            return (
               <button
-                id="btn-wizard-back"
+                key={cat}
                 type="button"
-                onClick={handleBack}
-                className="inline-flex items-center gap-2 px-5 py-2.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors min-h-[48px] cursor-pointer"
+                id={`btn-profile-cat-${cat}`}
+                onClick={() => updateUserProfile({ category: cat })}
+                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between min-h-[96px] ${
+                  isSelected
+                    ? 'border-blue-900 bg-blue-50/90 ring-2 ring-blue-900 shadow-xs'
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                }`}
               >
-                <ArrowLeft className="w-4 h-4" />
-                <span>{t('common.back')}</span>
-              </button>
-            ) : (
-              <div />
-            )}
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs text-blue-950 tracking-wide">
+                      {concession.label}
+                    </span>
+                    {isSelected && (
+                      <CheckCircle2 className="w-4 h-4 text-blue-900 shrink-0" />
+                    )}
+                  </div>
+                  <span className="text-[11px] text-slate-500 block mt-0.5">
+                    ₹2L Loan EMI:
+                  </span>
+                </div>
 
-            <button
-              id="btn-wizard-next"
-              type="button"
-              onClick={handleNext}
-              className="inline-flex items-center gap-2 px-7 py-2.5 text-xs font-bold text-white bg-blue-900 hover:bg-blue-950 rounded-xl shadow-md hover:shadow transition-all min-h-[48px] cursor-pointer"
+                <div className="mt-2 pt-2 border-t border-slate-100 flex items-baseline justify-between">
+                  <span className="text-base sm:text-lg font-black text-blue-950">
+                    ₹{benchmark.toLocaleString('en-IN')}
+                    <span className="text-[10px] font-normal text-slate-500">/mo</span>
+                  </span>
+                  {concession.monthlySubventionOn2L > 0 && (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                      -₹{concession.monthlySubventionOn2L}
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 2. DEMOGRAPHIC CONTROLS CARD: Age, State, Gender, Occupation, Income */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-7 shadow-xs space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+            <SlidersHorizontal className="w-4 h-4 text-blue-900" />
+            <span>2. Applicant Demographics & Financial Parameters</span>
+          </span>
+          <button
+            type="button"
+            onClick={handleResetProfile}
+            className="text-xs text-slate-500 hover:text-blue-900 flex items-center gap-1 font-semibold cursor-pointer"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Reset</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* A. Age */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-blue-800" />
+                <span>Age (आयु)</span>
+              </label>
+              <div className="px-2.5 py-0.5 bg-blue-50 text-[#0F294A] rounded-lg border border-blue-200 font-bold text-xs tabular-nums">
+                {userProfile.age} Years
+              </div>
+            </div>
+            <input
+              id="input-profile-age"
+              type="range"
+              min="18"
+              max="65"
+              step="1"
+              value={userProfile.age}
+              onChange={(e) => updateUserProfile({ age: Number(e.target.value) })}
+              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-900"
+            />
+            <div className="flex justify-between text-[11px] text-slate-400">
+              <span>18 yrs (Min)</span>
+              <span className="text-blue-900 font-semibold">{userProfile.age} yrs</span>
+              <span>65 yrs (Max)</span>
+            </div>
+          </div>
+
+          {/* B. State */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-blue-800" />
+              <span>State (राज्य)</span>
+            </label>
+            <select
+              id="select-profile-state"
+              value={userProfile.state}
+              onChange={(e) => updateUserProfile({ state: e.target.value })}
+              className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-900 focus:outline-none min-h-[42px] font-semibold text-blue-950 cursor-pointer"
             >
-              <span>{currentStep === 4 ? t('common.submit') : t('common.next')}</span>
-              <ArrowRight className="w-4 h-4 text-amber-400" />
-            </button>
+              {INDIAN_STATES.map((st) => (
+                <option key={st} value={st}>
+                  {st}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* C. Gender */}
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1">
+              <UserCheck className="w-3.5 h-3.5 text-blue-800" />
+              <span>Gender (लिंग)</span>
+            </label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {(['male', 'female', 'transgender'] as Gender[]).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  id={`btn-gender-${g}`}
+                  onClick={() => updateUserProfile({ gender: g })}
+                  className={`py-2 px-2 text-center rounded-xl border text-xs font-bold capitalize transition-all cursor-pointer ${
+                    userProfile.gender === g
+                      ? 'border-blue-900 bg-blue-900 text-white shadow-xs'
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {g === 'female' ? 'Female ♀' : g === 'male' ? 'Male ♂' : 'Trans'}
+                </button>
+              ))}
+            </div>
+            {userProfile.gender === 'female' && (
+              <span className="text-[11px] text-amber-800 font-semibold block">
+                ⭐ Eligible for Mahila Samriddhi & 0.5% interest rebate!
+              </span>
+            )}
           </div>
         </div>
-      ) : (
-        /* RESULTS VIEW */
-        <div className="space-y-6 animate-in fade-in duration-300">
-          {/* Top Filter Summary & Reset Bar */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4 shadow-xs">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full">
-                  {results.filter((r) => r.isEligible).length} Eligible Schemes Found
-                </span>
-                <span className="text-xs text-slate-500">
-                  Target: {formData.projectType.toUpperCase()} | Budget: ₹{formData.estimatedCost.toLocaleString('en-IN')}
-                </span>
+
+        {/* D. Occupation / Project Type */}
+        <div className="space-y-3 pt-2">
+          <label className="text-xs font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1.5">
+            <Briefcase className="w-3.5 h-3.5 text-blue-800" />
+            <span>Occupation / Sector (व्यवसाय व कार्यक्षेत्र)</span>
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {occupations.map((item) => {
+              const Icon = item.icon;
+              const isSelected = userProfile.occupation === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  id={`btn-profile-occ-${item.id}`}
+                  onClick={() => updateUserProfile({ occupation: item.id })}
+                  className={`p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between min-h-[90px] cursor-pointer ${
+                    isSelected
+                      ? 'border-blue-900 bg-blue-50/80 shadow-xs ring-2 ring-blue-900/15'
+                      : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className={`p-2 rounded-lg border ${item.color}`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    {isSelected && (
+                      <span className="w-5 h-5 rounded-full bg-blue-900 text-amber-300 flex items-center justify-center">
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2">
+                    <p className="text-xs font-bold text-blue-950">{item.label}</p>
+                    <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">{item.desc}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* E. Annual Household Income & Project Cost Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
+          {/* Household Income */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                Annual Family Income (वार्षिक आय)
+              </label>
+              <div className="flex items-center gap-1 px-3 py-1 bg-slate-50 text-[#0F294A] rounded-lg border border-slate-200 font-bold text-xs tabular-nums">
+                <span>₹</span>
+                <span>{userProfile.income.toLocaleString('en-IN')}</span>
               </div>
-              <p className="text-xs text-slate-600">
-                Ranked by scheme match confidence, concessional interest rates, and loan coverage.
-              </p>
             </div>
 
-            <button
-              id="btn-modify-criteria"
-              type="button"
-              onClick={() => setHasCalculated(false)}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-blue-950 bg-blue-50 hover:bg-blue-100 rounded-xl border border-blue-200 transition-colors min-h-[44px] cursor-pointer"
-            >
-              <SlidersHorizontal className="w-4 h-4 text-blue-900" />
-              <span>{t('schemes.modifyCriteria')}</span>
-            </button>
+            <input
+              id="input-profile-income"
+              type="range"
+              min="50000"
+              max="600000"
+              step="10000"
+              value={userProfile.income}
+              onChange={(e) => updateUserProfile({ income: Number(e.target.value) })}
+              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-900"
+            />
+
+            <div className="flex flex-wrap gap-1.5">
+              {incomePresets.map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => updateUserProfile({ income: p.value })}
+                  className={`px-2 py-1 text-[11px] font-semibold rounded-md border transition-all cursor-pointer ${
+                    userProfile.income === p.value
+                      ? 'bg-blue-900 text-white border-blue-900'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {/* Scheme Result Cards List */}
-          <div className="space-y-4">
-            {results.length > 0 ? (
-              results.map((result) => (
-                <SchemeCard
-                  key={result.scheme.id}
-                  result={result}
-                  onViewDetails={(res) => setSelectedResultForModal(res)}
-                />
-              ))
-            ) : (
-              <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-3">
-                <p className="text-base font-bold text-slate-800">{t('schemes.noMatchTitle')}</p>
-                <p className="text-xs text-slate-600 max-w-md mx-auto">{t('schemes.noMatchDesc')}</p>
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-900 text-white rounded-xl text-xs font-bold"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  <span>{t('common.reset')}</span>
-                </button>
+          {/* Project Cost / Loan Requirement */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+                Loan Requirement / Cost (ऋण आवश्यकता)
+              </label>
+              <div className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-[#0F294A] rounded-lg border border-blue-200 font-bold text-xs tabular-nums">
+                <span>₹</span>
+                <span>{userProfile.projectCost.toLocaleString('en-IN')}</span>
               </div>
-            )}
+            </div>
+
+            <input
+              id="input-profile-cost"
+              type="range"
+              min="25000"
+              max="5000000"
+              step="25000"
+              value={userProfile.projectCost}
+              onChange={(e) => updateUserProfile({ projectCost: Number(e.target.value) })}
+              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-900"
+            />
+
+            <div className="flex flex-wrap gap-1.5">
+              {costPresets.map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => updateUserProfile({ projectCost: p.value })}
+                  className={`px-2 py-1 text-[11px] font-semibold rounded-md border transition-all cursor-pointer ${
+                    userProfile.projectCost === p.value
+                      ? 'bg-blue-900 text-white border-blue-900'
+                      : p.highlight
+                      ? 'bg-amber-100 text-amber-950 border-amber-300 font-bold'
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      )}
+
+        {/* Optional Education Level Dropdown */}
+        <div className="pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+              Education Level (शैक्षणिक योग्यता)
+            </label>
+            <select
+              id="select-profile-edu"
+              value={userProfile.educationLevel}
+              onChange={(e) => updateUserProfile({ educationLevel: e.target.value as EducationLevel })}
+              className="px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:outline-none font-medium text-blue-950 cursor-pointer"
+            >
+              <option value="none">Below 10th</option>
+              <option value="10th_pass">10th Standard Pass</option>
+              <option value="12th_pass">12th Standard Pass</option>
+              <option value="graduate">Graduate (Degree)</option>
+              <option value="post_graduate">Post Graduate</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. LIVE AUTO-MATCHED SCHEMES RESULTS SUMMARY BANNER */}
+      <div className="bg-gradient-to-r from-blue-950 to-blue-900 text-white rounded-2xl p-5 shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 bg-emerald-400 text-blue-950 text-xs font-black rounded-full uppercase tracking-wider">
+                ✓ {eligibleCount} Eligible Schemes Auto-Matched
+              </span>
+              <span className="text-xs text-blue-200">
+                {userProfile.state} • Age {userProfile.age} • {userProfile.gender.toUpperCase()}
+              </span>
+            </div>
+            <p className="text-xs text-blue-200">
+              Auto-matched for <span className="font-bold text-white">{userProfile.occupation.toUpperCase()}</span> sector with annual income ₹{userProfile.income.toLocaleString('en-IN')}.
+            </p>
+          </div>
+
+          {/* Category Concessional Callout */}
+          <div className="bg-blue-900/90 border border-blue-700/80 rounded-xl px-4 py-3 text-right self-start sm:self-auto">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300 block">
+              {userProfile.category} Concessional EMI
+            </span>
+            <span className="text-2xl font-black text-white">
+              ₹{standard2LEmi.toLocaleString('en-IN')}
+              <span className="text-xs font-normal text-blue-300">/mo</span>
+            </span>
+            <span className="text-[10px] text-emerald-300 block font-semibold">
+              {subventionAmount > 0 
+                ? `(₹${subventionAmount}/mo affirmative relief)` 
+                : 'Standard institutional benchmark'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. SCHEME RESULT CARDS LIST */}
+      <div className="space-y-4">
+        {matchResults.length > 0 ? (
+          matchResults.map((result) => (
+            <SchemeCard
+              key={result.scheme.id}
+              result={result}
+              onViewDetails={(res) => setSelectedResultForModal(res)}
+            />
+          ))
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-3">
+            <p className="text-base font-bold text-slate-800">{t('schemes.noMatchTitle')}</p>
+            <p className="text-xs text-slate-600 max-w-md mx-auto">{t('schemes.noMatchDesc')}</p>
+            <button
+              type="button"
+              onClick={handleResetProfile}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-900 text-white rounded-xl text-xs font-bold"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>{t('common.reset')}</span>
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Scheme Details Modal */}
       <SchemeDetailsModal

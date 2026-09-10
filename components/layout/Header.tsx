@@ -8,7 +8,6 @@ import {
   Calculator, 
   Compass, 
   MapPin, 
-  Bot, 
   Landmark,
   Sparkles
 } from 'lucide-react';
@@ -21,7 +20,6 @@ export default function Header() {
     { id: 'schemes', label: locale === 'hi' ? 'स्मार्ट योजना चयन' : 'Smart Scheme Recommender', icon: Compass },
     { id: 'calculator', label: locale === 'hi' ? 'ईएमआई कैलकुलेटर' : 'EMI Calculator', icon: Calculator },
     { id: 'partners', label: locale === 'hi' ? 'चैनल पार्टनर खोजें' : 'Channel Partner', icon: MapPin },
-    { id: 'assistant', label: locale === 'hi' ? 'योजना सहायक' : 'Scheme Assistant', icon: Bot },
   ] as const;
 
   return (

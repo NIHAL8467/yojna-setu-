@@ -1,9 +1,20 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { Locale, Scheme } from '@/types';
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import type { Locale, Scheme, UserProfile, SocialCategory } from '@/types';
 import enMessages from '@/messages/en.json';
 import hiMessages from '@/messages/hi.json';
+
+const DEFAULT_USER_PROFILE: UserProfile = {
+  age: 28,
+  state: 'Delhi',
+  gender: 'male',
+  occupation: 'business',
+  income: 250000,
+  category: 'OBC',
+  projectCost: 200000,
+  educationLevel: '10th_pass',
+};
 
 interface AppContextType {
   locale: Locale;
@@ -13,10 +24,15 @@ interface AppContextType {
   setSelectedSchemeForCalculator: (scheme: Scheme | null) => void;
   selectedSchemeForPartners: string | null;
   setSelectedSchemeForPartners: (schemeId: string | null) => void;
-  activeTab: 'home' | 'schemes' | 'calculator' | 'partners' | 'assistant';
-  setActiveTab: (tab: 'home' | 'schemes' | 'calculator' | 'partners' | 'assistant') => void;
+  activeTab: 'home' | 'schemes' | 'calculator' | 'partners';
+  setActiveTab: (tab: 'home' | 'schemes' | 'calculator' | 'partners') => void;
   userCoords: { lat: number; lng: number } | null;
   setUserCoords: (coords: { lat: number; lng: number } | null) => void;
+  // User Profile & Category Concession
+  userProfile: UserProfile;
+  updateUserProfile: (patch: Partial<UserProfile>) => void;
+  userCategory: SocialCategory;
+  setUserCategory: (category: SocialCategory) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -37,8 +53,42 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
   const [selectedSchemeForCalculator, setSelectedSchemeForCalculator] = useState<Scheme | null>(null);
   const [selectedSchemeForPartners, setSelectedSchemeForPartners] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'home' | 'schemes' | 'calculator' | 'partners' | 'assistant'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'schemes' | 'calculator' | 'partners'>('home');
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('yojna_user_profile_v2');
+        if (saved) {
+          return { ...DEFAULT_USER_PROFILE, ...JSON.parse(saved) };
+        }
+      } catch {
+        // Ignore
+      }
+    }
+    return DEFAULT_USER_PROFILE;
+  });
+
+  const updateUserProfile = useCallback((patch: Partial<UserProfile>) => {
+    setUserProfile((prev) => {
+      const updated = { ...prev, ...patch };
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('yojna_user_profile_v2', JSON.stringify(updated));
+        } catch {
+          // Ignore
+        }
+      }
+      return updated;
+    });
+  }, []);
+
+  const setUserCategory = useCallback((category: SocialCategory) => {
+    updateUserProfile({ category });
+  }, [updateUserProfile]);
+
+  const userCategory = userProfile.category;
 
   const setLocale = (newLocale: Locale) => {
     setLocaleState(newLocale);
@@ -86,6 +136,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setActiveTab,
         userCoords,
         setUserCoords,
+        userProfile,
+        updateUserProfile,
+        userCategory,
+        setUserCategory,
       }}
     >
       {children}
@@ -100,3 +154,5 @@ export function useApp() {
   }
   return context;
 }
+
+export const useAppContext = useApp;

@@ -90,12 +90,31 @@ export interface ChannelPartner {
   distanceKm?: number;
 }
 
+export type SocialCategory = 'GENERAL' | 'OBC' | 'SC' | 'ST';
+
+export type Gender = 'male' | 'female' | 'transgender';
+
+export interface UserProfile {
+  age: number;
+  state: string;
+  gender: Gender;
+  occupation: string;
+  income: number;
+  category: SocialCategory;
+  projectCost: number;
+  educationLevel: EducationLevel;
+}
+
 export interface SchemeFilterInput {
   projectType: string;
   estimatedCost: number;
   familyIncome: number;
   educationLevel: EducationLevel;
   applicantCategory: ApplicantCategory;
+  age?: number;
+  state?: string;
+  gender?: Gender;
+  category?: SocialCategory;
 }
 
 export interface SchemeMatchResult {
@@ -107,6 +126,8 @@ export interface SchemeMatchResult {
   warnings: string[];
   calculatedLoanLimit: number;
   estimatedInterestRate: number;
+  concessionalEmiFor2L?: number;
+  categorySubventionAmount?: number;
 }
 
 export interface AmortizationRow {

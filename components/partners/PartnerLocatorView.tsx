@@ -41,6 +41,9 @@ export default function PartnerLocatorView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string>('ALL');
   const [selectedPartner, setSelectedPartner] = useState<ChannelPartner | null>(null);
+  const handleSelectPartner = React.useCallback((p: ChannelPartner) => {
+    setSelectedPartner(p);
+  }, [setSelectedPartner]);
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
 
@@ -114,10 +117,10 @@ export default function PartnerLocatorView() {
     <div id="partner-locator-view" className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div className="text-center space-y-2 mb-4">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-blue-950 tracking-tight">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#0F294A] tracking-tight leading-tight">
           {t('partners.title')}
         </h1>
-        <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto">
+        <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto leading-relaxed">
           {t('partners.subtitle')}
         </p>
       </div>
@@ -298,7 +301,7 @@ export default function PartnerLocatorView() {
                   </div>
 
                   {/* Title & Address */}
-                  <h3 className="text-sm sm:text-base font-bold text-blue-950 leading-snug">
+                  <h3 className="text-sm sm:text-base font-bold text-[#0F294A] leading-snug">
                     {locale === 'hi' && partner.nameHi ? partner.nameHi : partner.name}
                   </h3>
                   <p className="text-xs text-slate-600 mt-1 flex items-start gap-1.5 leading-relaxed">
@@ -380,7 +383,7 @@ export default function PartnerLocatorView() {
               partners={filteredPartners}
               userCoords={userCoords}
               selectedPartner={selectedPartner}
-              onSelectPartner={(p) => setSelectedPartner(p)}
+              onSelectPartner={handleSelectPartner}
             />
           </div>
         </div>

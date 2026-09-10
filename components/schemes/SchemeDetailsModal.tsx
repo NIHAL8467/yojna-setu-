@@ -142,6 +142,35 @@ export default function SchemeDetailsModal({ result, onClose }: SchemeDetailsMod
                 <span className="font-bold text-blue-950">{scheme.terms.promoterSharePercent}% (Minimal)</span>
               </div>
             </div>
+
+            {/* Category Subsidized EMI Comparison */}
+            <div className="mt-4 pt-3 border-t border-slate-200">
+              <span className="text-xs font-bold text-blue-950 uppercase tracking-wider block mb-2">
+                Category Concessional EMI (Standard ₹2 Lakhs Loan / 36 Months):
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="p-2.5 rounded-lg bg-white border border-slate-200 text-center">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">General</span>
+                  <span className="text-sm font-extrabold text-slate-900">₹6,499</span>
+                  <span className="text-[10px] text-slate-400 block">/month</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-blue-50/70 border border-blue-200 text-center">
+                  <span className="text-[10px] font-bold text-blue-700 uppercase block">OBC</span>
+                  <span className="text-sm font-extrabold text-blue-950">₹5,999</span>
+                  <span className="text-[10px] text-emerald-700 font-semibold block">-₹500 relief</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-emerald-50/70 border border-emerald-200 text-center">
+                  <span className="text-[10px] font-bold text-emerald-700 uppercase block">SC</span>
+                  <span className="text-sm font-extrabold text-emerald-950">₹5,499</span>
+                  <span className="text-[10px] text-emerald-700 font-semibold block">-₹1,000 relief</span>
+                </div>
+                <div className="p-2.5 rounded-lg bg-purple-50/70 border border-purple-200 text-center">
+                  <span className="text-[10px] font-bold text-purple-700 uppercase block">ST</span>
+                  <span className="text-sm font-extrabold text-purple-950">₹4,999</span>
+                  <span className="text-[10px] text-purple-700 font-semibold block">-₹1,500 relief</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Scheme Highlights */}

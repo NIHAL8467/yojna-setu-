@@ -716,6 +716,207 @@ function buildFallbackResponse(
     };
   }
 
+  // Intent 6: Student & Education Schemes
+  const isStudentQuery = lower.includes('student') || lower.includes('education') || lower.includes('छात्र') || lower.includes('शिक्षा') || lower.includes('study') || lower.includes('college') || lower.includes('btech') || lower.includes('degree') || lower.includes('els');
+  if (isStudentQuery) {
+    toolsUsed.push('get_scheme_details');
+    sources.push('ELS');
+    const els = schemes.find((s) => s.id === 'educational_loan_scheme')!;
+    const reply = language === 'hi'
+      ? `### शिक्षा ऋण योजना (Educational Loan Scheme - ELS)\n\n` +
+        `यह योजना अनुसूचित जाति व पिछड़े वर्ग के विद्यार्थियों को भारत एवं विदेशों में उच्च, तकनीकी व व्यावसायिक शिक्षा प्राप्त करने के लिए रियायती ब्याज दर पर ऋण प्रदान करती है।\n\n` +
+        `- **अधिकतम ऋण सीमा**: भारत में अध्ययन हेतु **₹20 लाख** तक | विदेश में अध्ययन हेतु **₹30 लाख** तक\n` +
+        `- **रियायती ब्याज दर**: केवल **4.0% वार्षिक** | **छात्राओं (Girl Students) के लिए विशेष छूट: 3.5% वार्षिक**\n` +
+        `- **मोरटोरियम (Gestation Period)**: पाठ्यक्रम की पूर्ण अवधि + 6 महीने या नौकरी मिलने तक (जो भी पहले हो)\n` +
+        `- **पुनर्भुगतान अवधि**: मोरटोरियम समाप्त होने के बाद 5 से 10 वर्ष\n` +
+        `- **पात्र पाठ्यक्रम**: इंजीनियरिंग, मेडिकल, एमबीए, कानून, बी.टेक, एमसीए, पॉलिटेक्निक व मान्यता प्राप्त डिग्री कोर्स।\n\n` +
+        `*नोट: अंतिम पात्रता और ऋण स्वीकृति संबंधित राज्य चैनेलाइजिंग एजेंसी (SCA) या बैंक द्वारा भौतिक दस्तावेज सत्यापन के अधीन है।*`
+      : `### Educational Loan Scheme (ELS) for Higher Education:\n\n` +
+        `Provides concessional financial assistance to eligible students pursuing full-time professional, technical, and doctoral degrees in India or abroad.\n\n` +
+        `- **Maximum Loan Limit**: Up to **₹20.00 Lakhs** for studies in India | Up to **₹30.00 Lakhs** for overseas studies\n` +
+        `- **Concessional Interest Rate**: **4.0% p.a.** | **Special rebate for Girl Students: 3.5% p.a.**\n` +
+        `- **Moratorium / Gestation Period**: Full course duration + 6 months or until securing employment (whichever is earlier)\n` +
+        `- **Repayment Tenure**: Up to 120 months (10 years) following the moratorium\n` +
+        `- **Eligible Courses**: Engineering, MBBS/BDS, MBA, MCA, Law, Polytechnic, and recognized university degree programs.\n\n` +
+        `*Note: Final eligibility and loan sanction are subject to verification of admission and academic documents by your State Channelising Agency (SCA) or lending bank.*`;
+
+    return {
+      reply,
+      language,
+      sources,
+      suggestedQuestions: [
+        language === 'hi' ? 'शिक्षा ऋण के लिए कौन से शैक्षणिक दस्तावेज चाहिए?' : 'What academic documents are needed for education loans?',
+        language === 'hi' ? 'छात्राओं के लिए 3.5% ब्याज दर के क्या नियम हैं?' : 'How does the 3.5% interest rate for girl students work?',
+        language === 'hi' ? 'क्या विदेश में पढ़ाई के लिए भी ऋण मिल सकता है?' : 'Can I get a loan for overseas higher education?',
+      ],
+      userProfile: { ...userProfile, purpose: 'education', business_type: 'higher_education' },
+      toolsUsed,
+    };
+  }
+
+  // Intent 7: Farmer & Agri-Allied Schemes
+  const isFarmerQuery = lower.includes('farmer') || lower.includes('kisan') || lower.includes('किसान') || lower.includes('कृषि') || lower.includes('dairy') || lower.includes('डेयरी') || lower.includes('agriculture') || lower.includes('animal husbandry') || lower.includes('poultry') || lower.includes('tractor');
+  if (isFarmerQuery) {
+    toolsUsed.push('get_scheme_details');
+    sources.push('TLS', 'GBS');
+    const reply = language === 'hi'
+      ? `### किसानों व ग्रामीण उद्यमियों हेतु सरकारी योजनाएं (Farmer & Agri-Allied Schemes):\n\n` +
+        `एनएसएफडीसी (NSFDC) एवं सामाजिक न्याय मंत्रालय किसानों, डेयरी उत्पादकों व कृषि-संबद्ध व्यवसायों को निम्नलिखित रियायती ऋण सहायता प्रदान करता है:\n\n` +
+        `1. **डेयरी व पशुपालन (Dairy & Animal Husbandry)**:\n` +
+        `   - गाय/भैंस पालन, चारा इकाई, पोल्ट्री व मत्स्य पालन हेतु **टर्म लोन योजना (TLS)** के अंतर्गत ₹10 लाख तक 6% वार्षिक दर पर।\n` +
+        `2. **कृषि परिवहन व उपकरण (Agri Transport & Machinery)**:\n` +
+        `   - ट्रैक्टर, ट्रॉली, थ्रेशर एवं कृषि उत्पाद ढुलाई के लिए वाणिज्यिक वाहनों हेतु 90% तक वित्तीय सहायता।\n` +
+        `3. **सोलर कृषि पंप व कोल्ड स्टोरेज (Solar Agri-Pumps & Storage)**:\n` +
+        `   - **ग्रीन बिजनेस योजना (GBS)** के तहत सौर सिंचाई पंप और छोटे सोलर कोल्ड स्टोरेज के लिए ₹27 लाख तक रियायती ऋण।\n` +
+        `4. **संबद्ध केंद्रीय योजनाएं**: पीएम-किसान (PM-KISAN सम्मान निधि - ₹6,000/वर्ष) और रियायती किसान क्रेडिट कार्ड (KCC 4% ब्याज पर)।\n\n` +
+        `*नोट: अंतिम ऋण स्वीकृति राज्य चैनेलाइजिंग एजेंसी (SCA) या अग्रणी बैंकों द्वारा भूमि रिकॉर्ड/परियोजना कोटेशन के भौतिक सत्यापन के अधीन है।*`
+      : `### Schemes for Farmers & Agri-Allied Entrepreneurs:\n\n` +
+        `Government concessional credit support for rural livelihoods, farmers, and agriculture-allied activities:\n\n` +
+        `1. **Dairy & Animal Husbandry**:\n` +
+        `   - Micro & Term loans under **Term Loan Scheme (TLS)** up to ₹10 Lakhs at 6.0% p.a. for dairy units, milch cattle, poultry, and animal sheds.\n` +
+        `2. **Farm Mechanization & Transport**:\n` +
+        `   - Concessional loans for small commercial transport, tractor-trailers, sprayers, and crop processing machinery (up to 90% project cost).\n` +
+        `3. **Solar Water Pumps & Clean Energy**:\n` +
+        `   - Under the **Green Business Scheme (GBS)**, get credit up to ₹27 Lakhs for solar rooftop units, solar-powered agricultural pump sets, and bio-waste processing.\n` +
+        `4. **Key Linked Direct Benefits**: PM-KISAN (direct transfer of ₹6,000/yr), Kisan Credit Card (KCC with 3% prompt repayment subvention), and PM Krishi Sinchayee Yojana.\n\n` +
+        `*Note: Final loan sanction is subject to land verification / project quotation by your State Channelising Agency (SCA) or rural bank.*`;
+
+    return {
+      reply,
+      language,
+      sources,
+      suggestedQuestions: [
+        language === 'hi' ? 'डेयरी फार्मिंग ऋण के लिए कौन से दस्तावेज चाहिए?' : 'What documents are required for a dairy farming loan?',
+        language === 'hi' ? 'सोलर कृषि पंप के लिए ग्रीन बिजनेस योजना में कितना ऋण मिलता है?' : 'How much loan is provided for solar pumps under Green Business?',
+        language === 'hi' ? 'किसान क्रेडिट कार्ड (KCC) के साथ इसका क्या संबंध है?' : 'How does this complement the Kisan Credit Card (KCC)?',
+      ],
+      userProfile: { ...userProfile, purpose: 'business', business_type: 'agriculture_dairy' },
+      toolsUsed,
+    };
+  }
+
+  // Intent 8: Senior Citizen Schemes
+  const isSeniorQuery = lower.includes('senior') || lower.includes('citizen') || lower.includes('वृद्ध') || lower.includes('बुजुर्ग') || lower.includes('elderly') || lower.includes('pension') || lower.includes('पेंशन') || lower.includes('vaya vandana') || lower.includes('age 60');
+  if (isSeniorQuery) {
+    sources.push('TLS', 'MCF');
+    const reply = language === 'hi'
+      ? `### वरिष्ठ नागरिकों व बुजुर्गों हेतु सरकारी कल्याणकारी योजनाएं:\n\n` +
+        `वरिष्ठ नागरिकों (आयु 60 वर्ष या अधिक) के सम्मानपूर्ण जीवन व आर्थिक सुरक्षा के लिए केंद्र व राज्य सरकारों द्वारा निम्नलिखित प्रमुख योजनाएं संचालित हैं:\n\n` +
+        `1. **इंदिरा गांधी राष्ट्रीय वृद्धावस्था पेंशन योजना (IGNOAPS)**:\n` +
+        `   - बीपीएल/कम आय वर्ग के 60+ वर्ष के बुजुर्गों को मासिक पेंशन सहायता (80+ वर्ष पर बढ़ी हुई दर)।\n` +
+        `2. **आयुष्मान भारत (PM-JAY Senior Citizen 70+)**:\n` +
+        `   - 70 वर्ष और उससे अधिक आयु के सभी वरिष्ठ नागरिकों के लिए ₹5,00,000 तक का निःशुल्क वार्षिक स्वास्थ्य बीमा सुरक्षा कवच (आय की कोई सीमा नहीं)।\n` +
+        `3. **वरिष्ठ नागरिकों हेतु स्व-रोजगार ऋण (Self-Employment Loans)**:\n` +
+        `   - यदि वरिष्ठ नागरिक (65 वर्ष तक) छोटा व्यवसाय, परचून दुकान, हस्तशिल्प या सेवा केंद्र चलाना चाहते हैं, तो वे **माइक्रो क्रेडिट फाइनेंस (MCF)** के तहत ₹1.40 लाख तक 5% ब्याज पर ऋण प्राप्त कर सकते हैं।\n` +
+        `4. **अटल पेंशन योजना (APY) व वरिष्ठ सुरक्षा योजनाएं**: 60 वर्ष के पश्चात निश्चित मासिक पेंशन सुरक्षा।\n\n` +
+        `*नोट: पेंशन व स्वास्थ्य कार्ड के लिए अपने नजदीकी सीएससी (CSC) या जिला समाज कल्याण विभाग से संपर्क करें।*`
+      : `### Welfare & Financial Schemes for Senior Citizens:\n\n` +
+        `Key government support initiatives designed for elderly citizens (aged 60 and above):\n\n` +
+        `1. **Ayushman Bharat Health Cover (All Seniors 70+)**:\n` +
+        `   - Comprehensive health insurance coverage up to **₹5,00,000 per family per year** for all citizens aged 70+, regardless of income.\n` +
+        `2. **Indira Gandhi National Old Age Pension Scheme (IGNOAPS)**:\n` +
+        `   - Monthly social security pension for seniors aged 60+ belonging to low-income households (enhanced benefit for 80+ years).\n` +
+        `3. **Self-Employment Concessional Credit (Up to Age 65)**:\n` +
+        `   - Seniors seeking active livelihood (retail shop, tailoring, advisory services) can avail **Micro Credit Finance (MCF)** loans up to ₹1.40 Lakhs at 5.0% p.a.\n` +
+        `4. **Atal Pension Yojana (APY) & Senior Savings**:\n` +
+        `   - Guaranteed monthly pension schemes backed by the Government of India and higher interest rates on Senior Citizen Savings Scheme (SCSS).\n\n` +
+        `*Note: For pension and health card enrollment, visit your local Common Service Center (CSC) or District Social Welfare Department.*`;
+
+    return {
+      reply,
+      language,
+      sources,
+      suggestedQuestions: [
+        language === 'hi' ? '70+ वरिष्ठ नागरिकों के लिए आयुष्मान कार्ड कैसे बनवाएं?' : 'How do senior citizens (70+) apply for the Ayushman card?',
+        language === 'hi' ? 'वृद्धावस्था पेंशन के लिए आय सीमा क्या है?' : 'What is the income ceiling for old age pensions?',
+        language === 'hi' ? 'वरिष्ठ नागरिक दुकान शुरू करने के लिए कितना ऋण ले सकते हैं?' : 'How much concessional credit can senior citizens borrow for a shop?',
+      ],
+      userProfile,
+      toolsUsed,
+    };
+  }
+
+  // Intent 9: Check Eligibility Direct
+  const isEligibilityQuery = lower.includes('check eligibility') || lower.includes('eligibility') || lower.includes('पात्रता') || lower.includes('eligible') || lower.includes('योग्यता');
+  if (isEligibilityQuery) {
+    toolsUsed.push('check_scheme_eligibility');
+    sources.push('MCF', 'TLS', 'MSY');
+    const reply = language === 'hi'
+      ? `### योजना पात्रता मानदंड जांच (Eligibility Checklist):\n\n` +
+        `योजना सेतु पोर्टल पर उपलब्ध योजनाओं के मुख्य पात्रता नियम इस प्रकार हैं:\n\n` +
+        `1. **सामाजिक वर्ग (Category)**: अनुसूचित जाति (SC), सफाई कर्मचारी, पिछड़े वर्ग (OBC) और आर्थिक रूप से कमजोर वर्ग।\n` +
+        `   - **वर्ग अनुसार ईएमआई राहत**: जनरल (₹6,499), ओबीसी (₹5,999), एससी (₹5,499), एसटी (₹4,999) प्रति ₹2 लाख ऋण पर।\n` +
+        `2. **पारिवारिक आय सीमा (Income Ceiling)**: कुल वार्षिक पारिवारिक आय **₹5,00,000 (5 लाख रुपये) से कम** होनी चाहिए।\n` +
+        `3. **आयु सीमा (Age Limit)**: 18 वर्ष से 65 वर्ष।\n` +
+        `4. **महिला उद्यमियों को विशेष लाभ**: महिला समृद्धि योजना (MSY) में 4% ब्याज तथा अन्य योजनाओं में **0.5% अतिरिक्त ब्याज छूट**।\n` +
+        `5. **आवश्यक आधारभूत दस्तावेज**: जाति प्रमाण पत्र, आय प्रमाण पत्र, आधार कार्ड, बैंक खाता पासबुक और परियोजना कोटेशन।\n\n` +
+        `आप पोर्टल के **"Scheme Recommender"** टैब में अपनी आयु, राज्य और आय दर्ज करके तुरंत अपने लिए अनुशंसित योजनाएं देख सकते हैं।\n\n` +
+        `*नोट: अंतिम पात्रता और ऋण स्वीकृति भौतिक दस्तावेज सत्यापन के अधीन है।*`
+      : `### Scheme Eligibility Criteria Checklist:\n\n` +
+        `To qualify for NSFDC concessional loans and government schemes on Yojna Setu, verify these primary benchmarks:\n\n` +
+        `1. **Target Group / Category**:\n` +
+        `   - Scheduled Castes (SC), Safai Karamcharis (Sanitation Workers), Other Backward Classes (OBC), and Artisans.\n` +
+        `   - **Category Subventions (₹2 Lakhs Loan / 36M)**: General: ₹6,499/mo | OBC: ₹5,999/mo (-₹500 relief) | SC: ₹5,499/mo (-₹1,000 relief) | ST: ₹4,999/mo (-₹1,500 relief).\n` +
+        `2. **Annual Family Income Ceiling**: Household annual income must be **≤ ₹5,00,000 p.a.**\n` +
+        `3. **Age Criteria**: 18 to 65 years at the time of application.\n` +
+        `4. **Affirmative Gender Rebate**: Women entrepreneurs receive a **0.5% p.a. interest rebate** and exclusive access to Mahila Samriddhi Yojana (4.0% p.a.).\n` +
+        `5. **Mandatory Documentation**: Digital Caste Certificate, Income Certificate (< ₹5L), Aadhaar card, Active bank passbook, and Equipment/Project Quotation.\n\n` +
+        `You can also use the interactive **Scheme Recommender** tab to get your precise match score and loan cap.\n\n` +
+        `*Note: Final sanction is subject to physical verification by your State Channelising Agency (SCA) or lead public sector bank.*`;
+
+    return {
+      reply,
+      language,
+      sources,
+      suggestedQuestions: [
+        language === 'hi' ? 'मेरी ₹3 लाख आय पर कौन सा ऋण मिल सकता है?' : 'What schemes are available for ₹3 Lakh income?',
+        language === 'hi' ? 'महिला समृद्धि योजना के क्या नियम हैं?' : 'What are the rules for Mahila Samriddhi Yojana?',
+        language === 'hi' ? 'आवेदन के साथ कौन से दस्तावेज जमा करने होते हैं?' : 'Which documents must be submitted with the application?',
+      ],
+      userProfile,
+      toolsUsed,
+    };
+  }
+
+  // Intent 10: Find a Scheme / Discover
+  const isFindSchemeQuery = lower.includes('find a scheme') || lower.includes('find scheme') || lower.includes('योजना खोजें') || lower.includes('योजनाएं खोजें') || lower.includes('योजना बताओ');
+  if (isFindSchemeQuery) {
+    toolsUsed.push('get_all_schemes');
+    sources.push('MCF', 'TLS', 'MSY', 'GBS', 'ELS');
+    const reply = language === 'hi'
+      ? `### आपके लिए सर्वोत्तम सरकारी योजना खोजें:\n\n` +
+        `योजना सेतु पर आपकी व्यावसायिक व शैक्षणिक आवश्यकताओं के अनुसार प्रमुख योजनाएं:\n\n` +
+        `1. **लघु व्यापार, दुकान व कारीगर**: **लघु ऋण वित्त (MCF)** — ₹1.40 लाख तक 5% ब्याज दर पर।\n` +
+        `2. **महिला उद्यमी व स्वयं सहायता समूह**: **महिला समृद्धि योजना (MSY)** — ₹1.40 लाख तक विशेष 4% ब्याज पर।\n` +
+        `3. **वाणिज्यिक वाहन, ई-रिक्शा व सोलर**: **ग्रीन बिजनेस योजना (GBS)** — ₹27 लाख तक 6% ब्याज पर (ई-रिक्शा हेतु 90% लागत)।\n` +
+        `4. **बड़ा व्यापार या विनिर्माण**: **टर्म लोन योजना (TLS)** — ₹45 लाख तक 6% से 9.5% ब्याज पर।\n` +
+        `5. **उच्च शिक्षा (इंजीनियरिंग, मेडिकल, एमबीए)**: **शिक्षा ऋण योजना (ELS)** — ₹20 लाख तक 4% ब्याज (छात्राओं हेतु 3.5%)।\n` +
+        `6. **स्वच्छता उपकरण व अपशिष्ट प्रबंधन**: **स्वच्छता उद्यमी योजना (SUY)** — ₹45 लाख तक 4.5% ब्याज पर।\n\n` +
+        `कृपया बताएं: **आप किस कार्य या व्यवसाय के लिए ऋण चाहते हैं** और आपकी अनुमानित लागत कितनी है? मैं आपके लिए सटीक ईएमआई और पात्रता निकाल दूंगा।`
+      : `### Find the Perfect Government Scheme for Your Needs:\n\n` +
+        `Explore verified concessional schemes tailored to your occupation and project requirements:\n\n` +
+        `1. **Small Retail, Vendors & Artisans**: **Micro Credit Finance (MCF)** — Loans up to ₹1.40 Lakhs at 5.0% p.a.\n` +
+        `2. **Women Entrepreneurs & SHGs**: **Mahila Samriddhi Yojana (MSY)** — Up to ₹1.40 Lakhs at only 4.0% p.a.\n` +
+        `3. **E-Rickshaw, Solar & Eco-transport**: **Green Business Scheme (GBS)** — Up to ₹27.00 Lakhs at 6.0% p.a. (up to 90% vehicle funding).\n` +
+        `4. **Commercial Units & Industry**: **Term Loan Scheme (TLS)** — Up to ₹45.00 Lakhs for enterprise scaling.\n` +
+        `5. **Higher & Professional Education**: **Educational Loan Scheme (ELS)** — Up to ₹20.00 Lakhs at 4.0% p.a. (3.5% for girl students).\n` +
+        `6. **Sanitation & Mechanized Equipment**: **Swachhta Udayami Yojana (SUY)** — Up to ₹45.00 Lakhs at 4.5% p.a.\n\n` +
+        `**Tell me**: What kind of activity or business do you plan to start, and what is your required loan amount? I will calculate your eligibility and monthly EMI!`;
+
+    return {
+      reply,
+      language,
+      sources,
+      suggestedQuestions: [
+        language === 'hi' ? 'ई-रिक्शा खरीदने के लिए ग्रीन बिजनेस योजना में कितना ऋण मिलेगा?' : 'How much loan for an E-Rickshaw under Green Business Scheme?',
+        language === 'hi' ? 'महिला समृद्धि योजना के लिए क्या नियम हैं?' : 'What are the rules for Mahila Samriddhi Yojana?',
+        language === 'hi' ? '₹2 लाख के ऋण पर मासिक ईएमआई कितनी होगी?' : 'What is the monthly EMI for a ₹2 Lakh loan?',
+      ],
+      userProfile,
+      toolsUsed,
+    };
+  }
+
   // Default Overview / Discovery
   toolsUsed.push('get_all_schemes');
   sources.push('MCF', 'TLS', 'ELS', 'MSY', 'GBS', 'SUY');

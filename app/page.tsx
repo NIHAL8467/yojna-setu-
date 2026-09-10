@@ -9,7 +9,7 @@ import HomeView from '@/components/home/HomeView';
 import SchemeWizard from '@/components/schemes/SchemeWizard';
 import EmiCalculatorView from '@/components/calculator/EmiCalculatorView';
 import PartnerLocatorView from '@/components/partners/PartnerLocatorView';
-import AiSchemeAssistant from '@/components/schemes/AiSchemeAssistant';
+import { FloatingYojnaMitra } from '@/components/chatbot/FloatingYojnaMitra';
 
 function AppContent() {
   const { activeTab } = useApp();
@@ -24,12 +24,12 @@ function AppContent() {
           {activeTab === 'schemes' && <SchemeWizard />}
           {activeTab === 'calculator' && <EmiCalculatorView />}
           {activeTab === 'partners' && <PartnerLocatorView />}
-          {activeTab === 'assistant' && <AiSchemeAssistant />}
         </main>
       </div>
 
       <Footer />
       <BottomNav />
+      <FloatingYojnaMitra />
     </div>
   );
 }

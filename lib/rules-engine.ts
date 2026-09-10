@@ -1,12 +1,17 @@
-import type { Scheme, SchemeFilterInput, SchemeMatchResult } from '@/types';
+import type { Scheme, SchemeFilterInput, SchemeMatchResult, SocialCategory } from '@/types';
 import { getAllSchemes } from './schemes';
+import { getStandard2LEmi, CATEGORY_CONCESSIONS } from './emi-calculator';
 
 /**
- * Deterministic rules engine to match user inputs against NSFDC schemes.
+ * Deterministic rules engine to match user inputs against NSFDC / Government schemes.
+ * Incorporates Age, State, Gender, Occupation, Income, and Social Category.
  */
 export function matchSchemes(input: SchemeFilterInput): SchemeMatchResult[] {
   const allSchemes = getAllSchemes();
   const results: SchemeMatchResult[] = [];
+  const selectedCategory: SocialCategory = input.category || 'OBC';
+  const concessionalEmi = getStandard2LEmi(selectedCategory);
+  const subventionAmount = Math.max(0, 6499 - concessionalEmi);
 
   for (const scheme of allSchemes) {
     let score = 50; // base score
@@ -14,20 +19,58 @@ export function matchSchemes(input: SchemeFilterInput): SchemeMatchResult[] {
     const warnings: string[] = [];
     let isEligible = true;
 
-    // 1. Income Check (NSFDC cap is typically ₹5,00,000 p.a.)
-    if (input.familyIncome > scheme.eligibility.maxFamilyIncome) {
-      isEligible = false;
-      warnings.push(`Annual family income (₹${input.familyIncome.toLocaleString('en-IN')}) exceeds scheme limit of ₹${scheme.eligibility.maxFamilyIncome.toLocaleString('en-IN')}.`);
-      score -= 40;
-    } else {
-      score += 15;
-      matchReasons.push(`Your family income (₹${input.familyIncome.toLocaleString('en-IN')}) is well within the ₹${scheme.eligibility.maxFamilyIncome.toLocaleString('en-IN')} ceiling.`);
-      if (input.familyIncome > scheme.eligibility.maxFamilyIncome * 0.85) {
-        warnings.push('Income is near the maximum eligibility threshold. Valid income certificate from Tehsildar/SDM will be strictly scrutinized.');
+    // 0. Age Eligibility Check
+    if (input.age !== undefined) {
+      if (input.age < 18) {
+        isEligible = false;
+        warnings.push(`Applicant age (${input.age} yrs) is below minimum required legal loan age of 18.`);
+        score -= 50;
+      } else if (input.age > 65) {
+        isEligible = false;
+        warnings.push(`Applicant age (${input.age} yrs) exceeds maximum age limit of 65 years for concessional credit.`);
+        score -= 40;
+      } else if (input.age >= 18 && input.age <= 45) {
+        score += 10;
+        matchReasons.push(`Age ${input.age} qualifies under prime entrepreneurial & self-employment bracket.`);
+      } else {
+        matchReasons.push(`Age ${input.age} is eligible within the 18-65 permissible age range.`);
       }
     }
 
-    // 2. Project Type / Sector Compatibility Check
+    // 1. Social Category Affirmative Action Matching
+    if (selectedCategory === 'SC') {
+      score += 25;
+      matchReasons.push(`Eligible under NSFDC Scheduled Caste Concessional Mandate (₹1,000/mo EMI relief, ~₹5,499/mo on ₹2L).`);
+    } else if (selectedCategory === 'ST') {
+      score += 25;
+      matchReasons.push(`Eligible under NSTFDC Scheduled Tribe Priority Channel (₹1,500/mo EMI relief, ~₹4,999/mo on ₹2L).`);
+    } else if (selectedCategory === 'OBC') {
+      score += 20;
+      matchReasons.push(`Eligible under NBCFDC Backward Classes Credit Line (₹500/mo EMI relief, ~₹5,999/mo on ₹2L).`);
+    } else {
+      score += 10;
+      matchReasons.push(`Eligible under Standard Institutional Lending / PMEGP / Mudra (~₹6,499/mo on ₹2L).`);
+    }
+
+    // State Representation
+    if (input.state && input.state !== 'All India') {
+      matchReasons.push(`Designated State Channelising Agency (SCA) operational in ${input.state}.`);
+    }
+
+    // 2. Income Check (NSFDC / Government ceiling is typically ₹3,00,000 to ₹5,00,000 p.a.)
+    if (input.familyIncome > scheme.eligibility.maxFamilyIncome) {
+      isEligible = false;
+      warnings.push(`Annual family income (₹${input.familyIncome.toLocaleString('en-IN')}) exceeds scheme ceiling of ₹${scheme.eligibility.maxFamilyIncome.toLocaleString('en-IN')}.`);
+      score -= 40;
+    } else {
+      score += 15;
+      matchReasons.push(`Your family income (₹${input.familyIncome.toLocaleString('en-IN')}) is within the ₹${scheme.eligibility.maxFamilyIncome.toLocaleString('en-IN')} limit.`);
+      if (input.familyIncome > scheme.eligibility.maxFamilyIncome * 0.85) {
+        warnings.push('Income is near the maximum eligibility threshold. Keep Tehsildar income certificate ready.');
+      }
+    }
+
+    // 3. Project Type / Sector Compatibility Check
     const projectTypes = scheme.eligibility.projectTypes;
     const isDirectProjectMatch = projectTypes.includes(input.projectType);
     const isGeneralBusinessMatch = (input.projectType === 'business' || input.projectType === 'artisan' || input.projectType === 'retail') && projectTypes.includes('business');
@@ -37,20 +80,20 @@ export function matchSchemes(input: SchemeFilterInput): SchemeMatchResult[] {
       matchReasons.push(`Specifically designed for ${formatProjectTypeName(input.projectType)} projects.`);
     } else if (isGeneralBusinessMatch) {
       score += 20;
-      matchReasons.push(`Covers general commercial, retail, and service activities.`);
+      matchReasons.push(`Covers general commercial, retail, and small enterprise activities.`);
     } else if (input.projectType === 'education' && scheme.category !== 'education') {
       isEligible = false;
-      warnings.push('This is a business enterprise scheme, not applicable for educational course fees.');
+      warnings.push('Enterprise loan scheme is not applicable for educational course fees.');
       score -= 50;
     } else if (input.projectType !== 'education' && scheme.category === 'education') {
       isEligible = false;
-      warnings.push('Educational Loan Scheme is solely applicable for professional/technical student courses.');
+      warnings.push('Education Loan Scheme is solely reserved for professional student degrees.');
       score -= 50;
     } else {
       score -= 10;
     }
 
-    // 3. Project Cost & Max Loan Amount Sizing
+    // 4. Project Cost & Max Loan Amount Sizing
     const maxCost = scheme.eligibility.maxProjectCostNumeric;
     const nsfdcSharePct = scheme.terms.nsfdcSharePercentNumeric || 90;
     const calculatedLoanLimit = Math.min(
@@ -63,26 +106,27 @@ export function matchSchemes(input: SchemeFilterInput): SchemeMatchResult[] {
       matchReasons.push(`Project cost (₹${input.estimatedCost.toLocaleString('en-IN')}) is within the permissible limit of up to ₹${maxCost.toLocaleString('en-IN')}.`);
     } else {
       if (scheme.id === 'micro_credit_finance' || scheme.id === 'mahila_samriddhi_yojana') {
-        warnings.push(`Your project cost (₹${input.estimatedCost.toLocaleString('en-IN')}) exceeds micro-credit ceiling (₹${maxCost.toLocaleString('en-IN')}). Consider applying under Term Loan Scheme for higher funding.`);
+        warnings.push(`Project cost (₹${input.estimatedCost.toLocaleString('en-IN')}) exceeds micro-credit ceiling (₹${maxCost.toLocaleString('en-IN')}). Consider applying under Term Loan Scheme for higher funding.`);
         score -= 20;
       } else {
-        warnings.push(`Project cost exceeds ₹${maxCost.toLocaleString('en-IN')}. Maximum NSFDC assistance is capped at ₹${scheme.terms.maxLoanAmountNumeric.toLocaleString('en-IN')}.`);
+        warnings.push(`Project cost exceeds ₹${maxCost.toLocaleString('en-IN')}. Maximum assistance is capped at ₹${scheme.terms.maxLoanAmountNumeric.toLocaleString('en-IN')}.`);
         score -= 10;
       }
     }
 
-    // 4. Demographic & Special Category Check (Women, SHG, Sanitation)
+    // 5. Gender & Special Categories
     let effectiveInterest = scheme.terms.interestRatePercentNumeric;
-    if (input.applicantCategory === 'female') {
+    const isFemale = input.gender === 'female' || input.applicantCategory === 'female';
+    if (isFemale) {
       if (scheme.id === 'mahila_samriddhi_yojana') {
-        score += 25;
+        score += 30;
         matchReasons.push('100% targeted for women entrepreneurs with special concessional rates.');
       } else if (scheme.terms.interestRebateWomenPercent > 0) {
         effectiveInterest = Math.max(1, effectiveInterest - scheme.terms.interestRebateWomenPercent);
-        score += 10;
+        score += 12;
         matchReasons.push(`Eligible for 0.5% p.a. interest rebate for women (Effective rate: ~${effectiveInterest}% p.a.).`);
       }
-    } else if (scheme.id === 'mahila_samriddhi_yojana' && input.applicantCategory === 'male') {
+    } else if (scheme.id === 'mahila_samriddhi_yojana' && !isFemale) {
       isEligible = false;
       warnings.push('Mahila Samriddhi Yojana is exclusively reserved for women entrepreneurs & women SHGs.');
       score -= 60;
@@ -93,7 +137,7 @@ export function matchSchemes(input: SchemeFilterInput): SchemeMatchResult[] {
       matchReasons.push('Supports group lending / Self-Help Group (SHG) micro-enterprise financing.');
     }
 
-    if (input.applicantCategory === 'safai_karamchari') {
+    if (input.applicantCategory === 'safai_karamchari' || input.projectType === 'sanitation') {
       if (scheme.id === 'swachhta_udayami_yojana') {
         score += 35;
         matchReasons.push('Highest priority scheme for mechanized sanitation & waste management equipment.');
@@ -105,7 +149,7 @@ export function matchSchemes(input: SchemeFilterInput): SchemeMatchResult[] {
       matchReasons.push('Special green concession for solar units, e-rickshaws, and clean energy.');
     }
 
-    // 5. Education Requirement Check
+    // 6. Education Requirement Check
     const requiredEdu = scheme.eligibility.educationRequired;
     if (requiredEdu === '12th_pass') {
       if (input.educationLevel === 'none' || input.educationLevel === '10th_pass') {
@@ -129,6 +173,8 @@ export function matchSchemes(input: SchemeFilterInput): SchemeMatchResult[] {
       warnings,
       calculatedLoanLimit,
       estimatedInterestRate: effectiveInterest,
+      concessionalEmiFor2L: concessionalEmi,
+      categorySubventionAmount: subventionAmount,
     });
   }
 

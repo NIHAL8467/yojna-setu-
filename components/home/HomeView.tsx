@@ -8,7 +8,6 @@ import {
   Compass, 
   Calculator, 
   MapPin, 
-  Bot, 
   ArrowRight, 
   CheckCircle2, 
   FileText,
@@ -43,13 +42,6 @@ export default function HomeView() {
       desc: locale === 'hi' ? 'निकटतम राज्य एजेंसियां और बैंक खोजें' : 'Locate eligible partners near you',
       icon: MapPin,
       action: () => setActiveTab('partners'),
-    },
-    {
-      id: 'assistant',
-      title: locale === 'hi' ? 'योजना सहायक' : 'Scheme Assistant',
-      desc: locale === 'hi' ? 'एआई से सटीक जानकारी और मार्गदर्शन पाएं' : 'Get AI help finding information',
-      icon: Bot,
-      action: () => setActiveTab('assistant'),
     },
   ] as const;
 
@@ -126,8 +118,8 @@ export default function HomeView() {
           </p>
         </div>
 
-        {/* 4 Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        {/* 3 Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
           {quickServices.map((service) => {
             const Icon = service.icon;
             return (
@@ -135,10 +127,18 @@ export default function HomeView() {
                 key={service.id}
                 id={`quick-service-card-${service.id}`}
                 onClick={service.action}
-                className="bg-white rounded-2xl p-6 border border-slate-100 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between cursor-pointer group h-full space-y-5"
+                className="relative overflow-hidden bg-white/90 rounded-2xl p-6 border border-slate-200/80 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between cursor-pointer group h-full space-y-5"
               >
-                <div>
-                  <div className="w-12 h-12 rounded-full bg-blue-100/80 flex items-center justify-center mb-4 group-hover:bg-[#003366] group-hover:text-white transition-all text-[#003366]">
+                {/* Blurred National Initiatives & Schemes Background Image */}
+                <div
+                  className="absolute inset-0 -z-10 bg-cover bg-center filter blur-[5px] scale-110 opacity-30 group-hover:scale-115 group-hover:opacity-40 transition-all duration-500 pointer-events-none"
+                  style={{ backgroundImage: "url('/images/national-schemes-emblem.svg')" }}
+                />
+                {/* Soft backdrop overlay to ensure 100% crisp, readable foreground content */}
+                <div className="absolute inset-0 -z-10 bg-white/85 backdrop-blur-[1px] group-hover:bg-white/75 transition-colors pointer-events-none" />
+
+                <div className="relative z-10">
+                  <div className="w-12 h-12 rounded-full bg-blue-100/90 flex items-center justify-center mb-4 group-hover:bg-[#003366] group-hover:text-white transition-all text-[#003366] shadow-xs">
                     <Icon className="w-5 h-5 transition-colors" />
                   </div>
 
@@ -146,12 +146,12 @@ export default function HomeView() {
                     {service.title}
                   </h3>
 
-                  <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                  <p className="text-xs text-slate-600 font-medium mt-1.5 leading-relaxed">
                     {service.desc}
                   </p>
                 </div>
 
-                <div className="pt-2 flex items-center text-[#0F294A] group-hover:text-[#003366]">
+                <div className="relative z-10 pt-2 flex items-center text-[#0F294A] group-hover:text-[#003366]">
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
                 </div>
               </div>
@@ -188,11 +188,19 @@ export default function HomeView() {
           {schemes.slice(0, 6).map((scheme) => (
             <div
               key={scheme.id}
-              className="bg-white rounded-2xl border border-slate-200 p-5 shadow-2xs hover:shadow-xs transition-all space-y-3 flex flex-col justify-between"
+              className="relative overflow-hidden bg-white/90 rounded-2xl border border-slate-200/80 p-5 shadow-2xs hover:shadow-xs transition-all space-y-3 flex flex-col justify-between group"
             >
-              <div className="space-y-2">
+              {/* Blurred National Initiatives & Schemes Background Image */}
+              <div
+                className="absolute inset-0 -z-10 bg-cover bg-center filter blur-[5px] scale-110 opacity-20 group-hover:scale-115 group-hover:opacity-30 transition-all duration-500 pointer-events-none"
+                style={{ backgroundImage: "url('/images/national-schemes-emblem.svg')" }}
+              />
+              {/* Soft overlay ensuring high contrast & clear content */}
+              <div className="absolute inset-0 -z-10 bg-white/88 backdrop-blur-[1px] pointer-events-none" />
+
+              <div className="relative z-10 space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 bg-[#003366] text-amber-300 text-[11px] font-bold rounded-md">
+                  <span className="px-2.5 py-0.5 bg-[#003366] text-amber-300 text-[11px] font-bold rounded-md shadow-2xs">
                     {scheme.code}
                   </span>
                   <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
@@ -204,12 +212,12 @@ export default function HomeView() {
                   {locale === 'hi' ? scheme.nameHi : scheme.name}
                 </h3>
 
-                <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+                <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed font-medium">
                   {locale === 'hi' ? scheme.descriptionHi : scheme.description}
                 </p>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+              <div className="relative z-10 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -227,7 +235,7 @@ export default function HomeView() {
                     setSelectedSchemeForPartners(scheme.id);
                     setActiveTab('partners');
                   }}
-                  className="text-xs font-bold text-white bg-[#003366] hover:bg-[#002244] px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                  className="text-xs font-bold text-white bg-[#003366] hover:bg-[#002244] px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer shadow-2xs"
                 >
                   {locale === 'hi' ? 'शाखाएं खोजें' : 'Find Partners'}
                 </button>

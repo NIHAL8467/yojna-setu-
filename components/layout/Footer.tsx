@@ -65,15 +65,6 @@ export default function Footer() {
                   {t('nav.partners')}
                 </button>
               </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('assistant')}
-                  className="text-slate-600 hover:text-[#003366] hover:underline transition-colors text-left cursor-pointer"
-                >
-                  {t('nav.aiAssistant')}
-                </button>
-              </li>
             </ul>
           </div>
 

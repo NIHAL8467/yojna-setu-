@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useApp } from '@/context/AppContext';
-import { Landmark, Compass, Calculator, MapPin, Bot } from 'lucide-react';
+import { Landmark, Compass, Calculator, MapPin } from 'lucide-react';
 
 export default function BottomNav() {
   const { activeTab, setActiveTab, t } = useApp();
@@ -12,7 +12,6 @@ export default function BottomNav() {
     { id: 'schemes', label: t('nav.schemes').replace('Smart ', '').replace(' (Scheme Recommender)', ''), icon: Compass },
     { id: 'calculator', label: t('nav.calculator'), icon: Calculator },
     { id: 'partners', label: t('nav.partners'), icon: MapPin },
-    { id: 'assistant', label: t('nav.aiAssistant'), icon: Bot },
   ] as const;
 
   return (
@@ -20,7 +19,7 @@ export default function BottomNav() {
       id="mobile-bottom-nav"
       className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 px-2 py-1.5 shadow-lg safe-bottom"
     >
-      <div className="grid grid-cols-5 gap-1 max-w-md mx-auto">
+      <div className="grid grid-cols-4 gap-1 max-w-md mx-auto">
         {items.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;

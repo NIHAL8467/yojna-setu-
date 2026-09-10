@@ -1,4 +1,91 @@
-import type { AmortizationRow, EmiCalculationResult } from '@/types';
+import type { AmortizationRow, EmiCalculationResult, SocialCategory } from '@/types';
+
+/**
+ * Category-based Interest & Concessional Subvention Benchmarks.
+ * User requirement:
+ * For a 2 Lakhs (₹2,00,000) loan (36 months):
+ * - General (Gen): ₹6,499
+ * - OBC: ₹5,999 (₹500/mo concession)
+ * - SC: ₹5,499 (₹1,000/mo concession)
+ * - ST: ₹4,999 (₹1,500/mo concession)
+ */
+export const CATEGORY_CONCESSIONS: Record<SocialCategory, {
+  label: string;
+  monthlySubventionOn2L: number;
+  benchmarkEmi2L: number;
+  badgeColor: string;
+  description: string;
+}> = {
+  GENERAL: {
+    label: 'General',
+    monthlySubventionOn2L: 0,
+    benchmarkEmi2L: 6499,
+    badgeColor: 'bg-slate-100 text-slate-800 border-slate-300',
+    description: 'Standard institutional commercial/micro-finance rate',
+  },
+  OBC: {
+    label: 'OBC (Backward Classes)',
+    monthlySubventionOn2L: 500,
+    benchmarkEmi2L: 5999,
+    badgeColor: 'bg-blue-100 text-blue-900 border-blue-300',
+    description: 'NBCFDC concessional interest subsidy (₹500/mo relief on ₹2L loan)',
+  },
+  SC: {
+    label: 'SC (Scheduled Castes)',
+    monthlySubventionOn2L: 1000,
+    benchmarkEmi2L: 5499,
+    badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+    description: 'NSFDC special affirmative rate (₹1,000/mo relief on ₹2L loan)',
+  },
+  ST: {
+    label: 'ST (Scheduled Tribes)',
+    monthlySubventionOn2L: 1500,
+    benchmarkEmi2L: 4999,
+    badgeColor: 'bg-purple-100 text-purple-900 border-purple-300',
+    description: 'NSTFDC maximum tribal affirmative subsidy (₹1,500/mo relief on ₹2L loan)',
+  },
+};
+
+/**
+ * Returns the exact benchmark EMI for a standard 2 Lakhs (₹2,00,000) loan over 36 months.
+ */
+export function getStandard2LEmi(category: SocialCategory): number {
+  return CATEGORY_CONCESSIONS[category]?.benchmarkEmi2L ?? 6499;
+}
+
+/**
+ * Computes category-adjusted EMI for any given principal, tenure, and category.
+ */
+export function calculateCategoryAdjustedEmi(
+  principal: number,
+  baseEmi: number,
+  category: SocialCategory
+): {
+  adjustedEmi: number;
+  monthlySubvention: number;
+  totalSubventionSavings: number;
+} {
+  if (principal === 200000) {
+    const adjusted = getStandard2LEmi(category);
+    const subvention = Math.max(0, 6499 - adjusted);
+    return {
+      adjustedEmi: adjusted,
+      monthlySubvention: subvention,
+      totalSubventionSavings: subvention * 36,
+    };
+  }
+
+  // Scale subvention proportionally to loan amount
+  const subventionFactor = (CATEGORY_CONCESSIONS[category]?.monthlySubventionOn2L ?? 0) / 200000;
+  const scaledMonthlySubvention = Math.round(principal * subventionFactor);
+  const adjustedEmi = Math.max(100, Math.round(baseEmi - scaledMonthlySubvention));
+
+  return {
+    adjustedEmi,
+    monthlySubvention: scaledMonthlySubvention,
+    totalSubventionSavings: scaledMonthlySubvention * 36,
+  };
+}
 
 /**
  * Calculates Reducing Balance EMI and full Amortization Schedule.

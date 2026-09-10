@@ -39,12 +39,19 @@ export default function SchemeCard({ result, onViewDetails }: SchemeCardProps) {
   return (
     <div
       id={`scheme-card-${scheme.id}`}
-      className={`bg-white rounded-2xl border transition-all shadow-xs hover:shadow-md overflow-hidden ${
+      className={`relative overflow-hidden bg-white/95 rounded-2xl border transition-all shadow-xs hover:shadow-md ${
         isEligible
           ? 'border-blue-200 ring-1 ring-blue-50'
           : 'border-amber-200 bg-amber-50/20'
       }`}
     >
+      {/* Blurred National Initiatives & Schemes Background Image */}
+      <div
+        className="absolute inset-0 -z-10 bg-cover bg-center filter blur-[5px] scale-110 opacity-15 pointer-events-none"
+        style={{ backgroundImage: "url('/images/national-schemes-emblem.svg')" }}
+      />
+      <div className="absolute inset-0 -z-10 bg-white/90 backdrop-blur-[1px] pointer-events-none" />
+
       {/* Top Banner with Scheme Code & Match Badge */}
       <div className="bg-slate-50 border-b border-slate-200 px-5 py-3.5 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -74,7 +81,7 @@ export default function SchemeCard({ result, onViewDetails }: SchemeCardProps) {
       <div className="p-5 sm:p-6 space-y-4">
         {/* Title and Description */}
         <div>
-          <h3 className="text-lg sm:text-xl font-bold text-blue-950 tracking-tight leading-snug">
+          <h3 className="text-lg sm:text-xl font-black text-[#0F294A] tracking-tight leading-snug">
             {locale === 'hi' ? scheme.nameHi : scheme.name}
           </h3>
           <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">
@@ -124,6 +131,34 @@ export default function SchemeCard({ result, onViewDetails }: SchemeCardProps) {
             </p>
           </div>
         </div>
+
+        {/* Category Concessional EMI Card */}
+        {result.concessionalEmiFor2L && (
+          <div className="bg-gradient-to-r from-blue-950 to-blue-900 text-white rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+            <div className="space-y-0.5">
+              <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                Category Subsidized EMI (₹2,00,000 Loan / 36M)
+              </span>
+              <p className="text-xs text-blue-200">
+                Adjusted for your social category affirmative concession
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <span className="text-xl sm:text-2xl font-black text-white">
+                  ₹{result.concessionalEmiFor2L.toLocaleString('en-IN')}
+                  <span className="text-xs font-normal text-blue-300">/mo</span>
+                </span>
+                {(result.categorySubventionAmount ?? 0) > 0 && (
+                  <span className="block text-[10px] text-emerald-300 font-semibold">
+                    Includes ₹{result.categorySubventionAmount}/mo subvention
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Match Reasons */}
         {matchReasons.length > 0 && (

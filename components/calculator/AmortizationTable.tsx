@@ -103,17 +103,17 @@ export default function AmortizationTable({ calculation }: AmortizationTableProp
                     )}
                   </div>
                 </td>
-                <td className="py-2.5 px-4 font-mono">₹{row.openingBalance.toLocaleString('en-IN')}</td>
-                <td className="py-2.5 px-4 font-mono font-bold text-blue-950">
+                <td className="py-2.5 px-4 tabular-nums font-medium text-slate-600">₹{row.openingBalance.toLocaleString('en-IN')}</td>
+                <td className="py-2.5 px-4 tabular-nums font-bold text-[#0F294A]">
                   ₹{row.emi.toLocaleString('en-IN')}
                 </td>
-                <td className="py-2.5 px-4 font-mono text-emerald-800">
+                <td className="py-2.5 px-4 tabular-nums font-semibold text-emerald-800">
                   ₹{row.principalPaid.toLocaleString('en-IN')}
                 </td>
-                <td className="py-2.5 px-4 font-mono text-rose-800">
+                <td className="py-2.5 px-4 tabular-nums font-semibold text-rose-800">
                   ₹{row.interestPaid.toLocaleString('en-IN')}
                 </td>
-                <td className="py-2.5 px-4 font-mono font-semibold">
+                <td className="py-2.5 px-4 tabular-nums font-bold text-[#0F294A]">
                   ₹{row.closingBalance.toLocaleString('en-IN')}
                 </td>
               </tr>

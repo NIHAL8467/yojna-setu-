@@ -1,10 +1,15 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { getAllSchemes } from '@/lib/schemes';
-import { calculateEmiSchedule } from '@/lib/emi-calculator';
-import type { Scheme, EmiCalculationResult } from '@/types';
+import { 
+  calculateEmiSchedule, 
+  CATEGORY_CONCESSIONS, 
+  getStandard2LEmi, 
+  calculateCategoryAdjustedEmi 
+} from '@/lib/emi-calculator';
+import type { Scheme, EmiCalculationResult, SocialCategory } from '@/types';
 import AmortizationTable from './AmortizationTable';
 import { 
   Calculator, 
@@ -17,28 +22,35 @@ import {
   RotateCcw, 
   MapPin, 
   Info,
-  Check
+  Check,
+  CheckCircle2,
+  Users
 } from 'lucide-react';
 
 export default function EmiCalculatorView() {
-  const { t, locale, selectedSchemeForCalculator, setSelectedSchemeForPartners, setActiveTab } = useApp();
-  const schemes = getAllSchemes();
+  const { 
+    t, 
+    locale, 
+    selectedSchemeForCalculator, 
+    setSelectedSchemeForPartners, 
+    setActiveTab,
+    userCategory,
+    setUserCategory
+  } = useApp();
 
+  const schemes = getAllSchemes();
   const defaultScheme = selectedSchemeForCalculator || schemes[0];
 
   const [selectedSchemeId, setSelectedSchemeId] = useState<string>(defaultScheme?.id || 'micro_credit_finance');
   const [isWomenApplicant, setIsWomenApplicant] = useState(false);
-  const [principal, setPrincipal] = useState<number>(() => {
-    const loanAmt = Math.min(defaultScheme?.terms.maxLoanAmountNumeric || 100000, 150000);
-    return loanAmt > 0 ? loanAmt : 100000;
-  });
+  const [principal, setPrincipal] = useState<number>(200000); // Defaults to ₹2,00,000 as requested
   const [interestRate, setInterestRate] = useState<number>(defaultScheme?.terms.interestRatePercentNumeric || 5.0);
   const [tenureMonths, setTenureMonths] = useState<number>(defaultScheme?.terms.maxTenureMonthsNumeric || 36);
   const [moratoriumMonths, setMoratoriumMonths] = useState<number>(defaultScheme?.terms.moratoriumMonthsNumeric || 3);
 
   const applySchemeDefaults = React.useCallback((scheme: Scheme) => {
-    const loanAmt = Math.min(scheme.terms.maxLoanAmountNumeric, 150000);
-    setPrincipal(loanAmt > 0 ? loanAmt : 100000);
+    const loanAmt = Math.min(scheme.terms.maxLoanAmountNumeric, 200000);
+    setPrincipal(loanAmt > 0 ? loanAmt : 200000);
     setInterestRate(scheme.terms.interestRatePercentNumeric || 5.0);
     setTenureMonths(scheme.terms.maxTenureMonthsNumeric || 36);
     setMoratoriumMonths(scheme.terms.moratoriumMonthsNumeric || 3);
@@ -58,13 +70,22 @@ export default function EmiCalculatorView() {
     ? Math.max(1, interestRate - 0.5)
     : interestRate;
 
-  // Calculate schedule
+  // Base calculation
   const calculation: EmiCalculationResult = calculateEmiSchedule(
     principal,
     effectiveRate,
     tenureMonths,
     moratoriumMonths
   );
+
+  // Category Concessional Adjustments
+  const categoryAdjustment = calculateCategoryAdjustedEmi(
+    principal,
+    calculation.monthlyEmi,
+    userCategory
+  );
+
+  const finalMonthlyEmi = categoryAdjustment.adjustedEmi;
 
   const principalRatio = calculation.totalRepayment > 0 
     ? Math.round((calculation.principalAmount / calculation.totalRepayment) * 100)
@@ -78,16 +99,94 @@ export default function EmiCalculatorView() {
     setActiveTab('partners');
   };
 
+  const principalPresets = [
+    { label: '₹50,000', value: 50000 },
+    { label: '₹1 Lakh', value: 100000 },
+    { label: '₹2 Lakhs (Standard)', value: 200000, highlight: true },
+    { label: '₹5 Lakhs', value: 500000 },
+    { label: '₹10 Lakhs', value: 1000000 },
+  ];
+
+  const categories: SocialCategory[] = ['GENERAL', 'OBC', 'SC', 'ST'];
+
   return (
     <div id="emi-calculator-view" className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="text-center space-y-2 mb-6">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-blue-950 tracking-tight">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#0F294A] tracking-tight leading-tight">
           {t('calculator.title')}
         </h1>
-        <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto">
-          {t('calculator.subtitle')}
+        <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto leading-relaxed">
+          {locale === 'hi' 
+            ? 'जाति श्रेणी (Category / Caste) के अनुसार रियायती ब्याज दर व मासिक ईएमआई की सटीक गणना करें।'
+            : 'Calculate reducing-balance monthly EMI with government concessional subventions based on Social Category.'}
         </p>
+      </div>
+
+      {/* Category / Caste Concession Benchmark Bar (Gen: 6499, OBC: 5999, SC: 5499, ST: 4999) */}
+      <div className="bg-white rounded-2xl border border-blue-200 p-5 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <span className="text-xs font-bold text-blue-950 uppercase tracking-wider flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-blue-800" />
+              <span>Select Category (Caste) — Concessional EMI Subvention</span>
+            </span>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Government subvention benchmarked for a ₹2,00,000 (2 Lakhs) standard loan:
+            </p>
+          </div>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-blue-50 text-blue-900 border border-blue-200 self-start sm:self-auto">
+            Active: <span className="font-extrabold">{userCategory}</span>
+          </span>
+        </div>
+
+        {/* 4 Category Selection Buttons Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {categories.map((cat) => {
+            const isSelected = userCategory === cat;
+            const benchmark = getStandard2LEmi(cat);
+            const concession = CATEGORY_CONCESSIONS[cat];
+            return (
+              <button
+                key={cat}
+                type="button"
+                id={`btn-calc-category-${cat}`}
+                onClick={() => setUserCategory(cat)}
+                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between min-h-[96px] ${
+                  isSelected
+                    ? 'border-blue-900 bg-blue-50/80 ring-2 ring-blue-900 shadow-xs'
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-xs text-blue-950 tracking-wide">
+                      {concession.label}
+                    </span>
+                    {isSelected && (
+                      <CheckCircle2 className="w-4 h-4 text-blue-900 shrink-0" />
+                    )}
+                  </div>
+                  <span className="text-[11px] text-slate-500 block mt-0.5">
+                    ₹2L Loan EMI:
+                  </span>
+                </div>
+
+                <div className="mt-2 pt-2 border-t border-slate-100 flex items-baseline justify-between">
+                  <span className="text-base sm:text-lg font-black text-blue-950">
+                    ₹{benchmark.toLocaleString('en-IN')}
+                    <span className="text-[10px] font-normal text-slate-500">/mo</span>
+                  </span>
+                  {concession.monthlySubventionOn2L > 0 && (
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                      -₹{concession.monthlySubventionOn2L}
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -121,7 +220,7 @@ export default function EmiCalculatorView() {
                 Women Entrepreneur Concession
               </span>
               <p className="text-[11px] text-amber-800">
-                {t('calculator.interestRebateNote')}
+                {t('calculator.interestRebateNote')} (0.5% additional rebate)
               </p>
             </div>
             <button
@@ -140,17 +239,38 @@ export default function EmiCalculatorView() {
             </button>
           </div>
 
-          {/* 1. Principal Loan Amount */}
+          {/* 1. Principal Loan Amount with Presets */}
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
                 {t('calculator.loanAmount')}
               </label>
-              <div className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-950 rounded-lg border border-blue-200 font-mono font-bold text-sm">
+              <div className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-[#0F294A] rounded-lg border border-blue-200 font-bold text-sm tabular-nums">
                 <span>₹</span>
                 <span>{principal.toLocaleString('en-IN')}</span>
               </div>
             </div>
+
+            {/* Quick Amount Presets */}
+            <div className="flex flex-wrap gap-2">
+              {principalPresets.map((preset) => (
+                <button
+                  key={preset.value}
+                  type="button"
+                  onClick={() => setPrincipal(preset.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer min-h-[32px] ${
+                    principal === preset.value
+                      ? 'bg-blue-900 text-white shadow-xs'
+                      : preset.highlight
+                      ? 'bg-amber-100 text-amber-950 border border-amber-300 hover:bg-amber-200'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
             <input
               id="input-calc-principal"
               type="range"
@@ -163,7 +283,7 @@ export default function EmiCalculatorView() {
             />
             <div className="flex justify-between text-[11px] text-slate-400">
               <span>₹20,000</span>
-              <span>₹25 Lakhs</span>
+              <span className="font-semibold text-blue-900">₹2 Lakhs</span>
               <span>₹50 Lakhs</span>
             </div>
           </div>
@@ -174,9 +294,9 @@ export default function EmiCalculatorView() {
               <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
                 {t('calculator.interestRate')}
               </label>
-              <div className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-950 rounded-lg border border-blue-200 font-mono font-bold text-sm">
+              <div className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-[#0F294A] rounded-lg border border-blue-200 font-bold text-sm tabular-nums">
                 <span>{effectiveRate.toFixed(1)}%</span>
-                <span className="text-[10px] text-slate-500">p.a.</span>
+                <span className="text-[10px] text-slate-500 font-medium">p.a.</span>
               </div>
             </div>
             <input
@@ -202,9 +322,9 @@ export default function EmiCalculatorView() {
               <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
                 {t('calculator.tenureMonths')}
               </label>
-              <div className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-950 rounded-lg border border-blue-200 font-mono font-bold text-sm">
+              <div className="flex items-center gap-1 px-3 py-1 bg-blue-50 text-[#0F294A] rounded-lg border border-blue-200 font-bold text-sm tabular-nums">
                 <span>{tenureMonths} Months</span>
-                <span className="text-[10px] text-slate-500">
+                <span className="text-[10px] text-slate-500 font-medium">
                   ({(tenureMonths / 12).toFixed(1)} yrs)
                 </span>
               </div>
@@ -221,7 +341,7 @@ export default function EmiCalculatorView() {
             />
             <div className="flex justify-between text-[11px] text-slate-400">
               <span>6 Months</span>
-              <span>3 Years (36M)</span>
+              <span className="font-semibold text-blue-900">3 Years (36M)</span>
               <span>5 Years (60M)</span>
               <span>10 Years (120M)</span>
             </div>
@@ -233,7 +353,7 @@ export default function EmiCalculatorView() {
               <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">
                 {t('calculator.moratoriumMonths')} (Gestation)
               </label>
-              <div className="flex items-center gap-1 px-3 py-1 bg-amber-50 text-amber-950 rounded-lg border border-amber-200 font-mono font-bold text-sm">
+              <div className="flex items-center gap-1 px-3 py-1 bg-amber-50 text-amber-950 rounded-lg border border-amber-200 font-bold text-sm tabular-nums">
                 <span>{moratoriumMonths} Months</span>
               </div>
             </div>
@@ -257,16 +377,36 @@ export default function EmiCalculatorView() {
         <div className="lg:col-span-5 space-y-4">
           {/* Main EMI Highlight Box */}
           <div className="bg-gradient-to-br from-blue-900 to-blue-950 text-white rounded-2xl p-6 shadow-md border border-blue-800 space-y-4">
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-300">
-              {t('calculator.monthlyEmi')}
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-300">
+                {t('calculator.monthlyEmi')} ({userCategory})
+              </span>
+              <span className="px-2 py-0.5 bg-blue-800 text-blue-200 text-[10px] font-bold rounded">
+                Reducing Balance
+              </span>
+            </div>
+
             <div className="flex items-baseline gap-1">
               <span className="text-2xl font-light text-blue-200">₹</span>
               <span className="text-4xl sm:text-5xl font-black text-white tracking-tight">
-                {calculation.monthlyEmi.toLocaleString('en-IN')}
+                {finalMonthlyEmi.toLocaleString('en-IN')}
               </span>
               <span className="text-xs text-blue-200">/ month</span>
             </div>
+
+            {/* Category Subvention Highlight */}
+            {categoryAdjustment.monthlySubvention > 0 && (
+              <div className="bg-emerald-950/60 border border-emerald-500/40 rounded-xl p-3 text-xs space-y-1">
+                <div className="flex items-center justify-between text-emerald-300 font-bold">
+                  <span>{userCategory} Affirmative Subvention:</span>
+                  <span>-₹{categoryAdjustment.monthlySubvention.toLocaleString('en-IN')}/mo</span>
+                </div>
+                <div className="flex items-center justify-between text-emerald-200 text-[11px]">
+                  <span>Total Government Savings (36 mos):</span>
+                  <span className="font-bold">₹{categoryAdjustment.totalSubventionSavings.toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+            )}
 
             <div className="border-t border-blue-800/80 pt-4 grid grid-cols-2 gap-3 text-xs">
               <div>
