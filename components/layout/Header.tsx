@@ -22,7 +22,7 @@ export default function Header() {
   const navItems = [
     { 
       id: 'home', 
-      label: locale === 'hi' ? 'होम (Home)' : 'Home', 
+      label: locale === 'hi' ? 'होम' : 'Home', 
       desc: locale === 'hi' ? 'मुख्य पृष्ठ' : 'Portal Homepage',
       icon: Landmark 
     },
@@ -40,7 +40,7 @@ export default function Header() {
     },
     { 
       id: 'partners', 
-      label: locale === 'hi' ? 'चैनल पार्टनर खोजें' : 'Channel Partner', 
+      label: locale === 'hi' ? 'चैनल पार्टनर' : 'Channel Partner', 
       desc: locale === 'hi' ? 'निकटतम केंद्र व बैंक' : 'Find SCA Agencies & Banks',
       icon: MapPin 
     },
@@ -99,35 +99,55 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Secondary Row: Rounded Navigation Bar for Desktop & Tablet */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-2.5 sm:pb-3">
-        <nav
-          id="nav-main-pill-bar"
-          aria-label="Main Navigation"
-          className="flex items-center gap-1 sm:gap-1.5 bg-[#F1F5F9] p-1 sm:p-1.5 rounded-xl sm:rounded-full border border-slate-200/90 shadow-2xs overflow-x-auto scrollbar-none w-full"
-        >
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
+      {/* Route-Based Navigation Bar: Hidden on Home page, only active page pill on other pages */}
+      {activeTab !== 'home' && (
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-2.5 sm:pb-3">
+          <nav
+            id="nav-main-pill-bar"
+            aria-label="Current Page Navigation"
+            className="flex items-center bg-[#F1F5F9] p-1 sm:p-1.5 rounded-xl sm:rounded-full border border-slate-200/90 shadow-2xs w-fit max-w-full"
+          >
+            {activeTab === 'schemes' && (
               <button
-                key={item.id}
-                id={`nav-item-${item.id}`}
+                id="nav-item-schemes"
                 type="button"
-                onClick={() => handleNavClick(item.id)}
-                className={`flex items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-full text-xs font-bold transition-all whitespace-nowrap cursor-pointer min-h-[36px] sm:min-h-[38px] flex-1 sm:flex-initial ${
-                  isActive
-                    ? 'bg-[#003366] text-white shadow-xs'
-                    : 'text-slate-700 hover:text-[#003366] hover:bg-slate-200/80'
-                }`}
+                onClick={() => handleNavClick('schemes')}
+                aria-current="page"
+                className="flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-full text-xs font-bold bg-[#003366] text-white shadow-xs whitespace-nowrap cursor-pointer"
               >
-                <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-amber-400' : 'text-slate-500'}`} />
-                <span className="truncate">{item.label}</span>
+                <Compass className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                <span id="active-page-name-schemes">{locale === 'hi' ? 'स्मार्ट योजना चयन' : 'Smart Scheme Recommender'}</span>
               </button>
-            );
-          })}
-        </nav>
-      </div>
+            )}
+
+            {activeTab === 'calculator' && (
+              <button
+                id="nav-item-calculator"
+                type="button"
+                onClick={() => handleNavClick('calculator')}
+                aria-current="page"
+                className="flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-full text-xs font-bold bg-[#003366] text-white shadow-xs whitespace-nowrap cursor-pointer"
+              >
+                <Calculator className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                <span id="active-page-name-calculator">{locale === 'hi' ? 'ईएमआई कैलकुलेटर' : 'EMI Calculator'}</span>
+              </button>
+            )}
+
+            {activeTab === 'partners' && (
+              <button
+                id="nav-item-partners"
+                type="button"
+                onClick={() => handleNavClick('partners')}
+                aria-current="page"
+                className="flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-full text-xs font-bold bg-[#003366] text-white shadow-xs whitespace-nowrap cursor-pointer"
+              >
+                <MapPin className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                <span id="active-page-name-partners">{locale === 'hi' ? 'चैनल पार्टनर' : 'Channel Partner'}</span>
+              </button>
+            )}
+          </nav>
+        </div>
+      )}
 
       {/* Mobile Drawer Dropdown Menu (Accessible when hamburger is clicked) */}
       {isMobileMenuOpen && (

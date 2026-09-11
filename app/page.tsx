@@ -4,7 +4,6 @@ import React from 'react';
 import { AppProvider, useApp } from '@/context/AppContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-import BottomNav from '@/components/layout/BottomNav';
 import HomeView from '@/components/home/HomeView';
 import SchemeWizard from '@/components/schemes/SchemeWizard';
 import EmiCalculatorView from '@/components/calculator/EmiCalculatorView';
@@ -28,7 +27,6 @@ function AppContent() {
       </div>
 
       <Footer />
-      <BottomNav />
       <FloatingYojnaMitra />
     </div>
   );
