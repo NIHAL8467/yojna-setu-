@@ -7,6 +7,7 @@ import { getAllPartners } from '@/lib/partners';
 import { getAllSchemes } from '@/lib/schemes';
 import { sortPartnersByDistance, formatDistance } from '@/lib/geo-utils';
 import type { ChannelPartner } from '@/types';
+import { INDIAN_STATES } from '@/lib/constants';
 import { 
   MapPin, 
   Search, 
@@ -19,22 +20,32 @@ import {
   Building2, 
   CheckCircle2, 
   Sparkles,
-  Compass
+  Compass,
+  X
 } from 'lucide-react';
 
 // Dynamic import of LeafletMap to avoid SSR issues
 const LeafletMap = dynamic(() => import('./LeafletMap'), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-[420px] bg-slate-100 rounded-2xl flex items-center justify-center text-xs text-slate-500 animate-pulse border border-slate-200">
+    <div className="w-full h-[440px] sm:h-[480px] lg:h-[540px] bg-slate-100 rounded-2xl flex items-center justify-center text-xs text-slate-500 animate-pulse border border-slate-200">
       <Compass className="w-6 h-6 animate-spin text-blue-900 mr-2" />
-      <span>Loading OpenStreetMap Partner Map...</span>
+      <span>Loading Interactive Partner Map...</span>
     </div>
   ),
 });
 
 export default function PartnerLocatorView() {
-  const { t, locale, selectedSchemeForPartners, setSelectedSchemeForPartners, userCoords, setUserCoords } = useApp();
+  const { 
+    t, 
+    locale, 
+    selectedSchemeForPartners, 
+    setSelectedSchemeForPartners, 
+    userCoords, 
+    setUserCoords,
+    userProfile,
+    updateUserProfile
+  } = useApp();
   const allPartners = getAllPartners();
   const allSchemes = getAllSchemes();
 
@@ -59,19 +70,19 @@ export default function PartnerLocatorView() {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        setUserCoords({
+        const coords = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
-        });
+        };
+        setUserCoords(coords);
+        // Reset manual state/district text filters so the nearest banks to the GPS location are found
+        updateUserProfile({ state: '', district: '' });
         setGeoLoading(false);
       },
       (err) => {
-        console.warn('Geolocation failed or denied, using Delhi NCR default coordinates:', err);
-        // Fallback to Delhi Central coordinates for demo
-        setUserCoords({
-          lat: 28.6139,
-          lng: 77.2090,
-        });
+        console.warn('Geolocation failed or denied:', err);
+        setGeoError('Location permission denied or unavailable. Please select your State & District.');
+        setUserCoords(null);
         setGeoLoading(false);
       },
       { timeout: 10000 }
@@ -82,7 +93,37 @@ export default function PartnerLocatorView() {
   const filteredPartners = useMemo(() => {
     let list = [...allPartners];
 
-    // 1. Search Query
+    // If GPS location is not set, apply manual state/district filters
+    if (!userCoords) {
+      // 1. Exact State Filter (based on user profile / selection)
+      if (userProfile.state && userProfile.state !== 'All India' && userProfile.state.trim() !== '') {
+        const stateTarget = userProfile.state.trim().toLowerCase();
+        list = list.filter((p) => p.state.toLowerCase() === stateTarget);
+      }
+
+      // 2. Exact District Filter (based on user profile / input)
+      if (userProfile.district && userProfile.district.trim() !== '') {
+        const distTarget = userProfile.district.trim().toLowerCase();
+        list = list.filter(
+          (p) =>
+            p.district.toLowerCase().includes(distTarget) ||
+            p.address.toLowerCase().includes(distTarget) ||
+            p.name.toLowerCase().includes(distTarget)
+        );
+      }
+    } else {
+      // When GPS location is active, if the user explicitly picks a state, filter by it;
+      // otherwise, all partners across India are available and sorted by proximity to the user!
+      if (userProfile.state && userProfile.state !== 'All India' && userProfile.state.trim() !== '') {
+        const stateTarget = userProfile.state.trim().toLowerCase();
+        const stateMatches = list.filter((p) => p.state.toLowerCase() === stateTarget);
+        if (stateMatches.length > 0) {
+          list = stateMatches;
+        }
+      }
+    }
+
+    // 3. Search Query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(
@@ -95,23 +136,23 @@ export default function PartnerLocatorView() {
       );
     }
 
-    // 2. Scheme Filter
+    // 4. Scheme Filter
     if (selectedSchemeForPartners && selectedSchemeForPartners !== 'ALL') {
       list = list.filter((p) => p.schemesProcessed.includes(selectedSchemeForPartners));
     }
 
-    // 3. Partner Type Filter
+    // 5. Partner Type Filter
     if (selectedType !== 'ALL') {
       list = list.filter((p) => p.type === selectedType);
     }
 
-    // 4. Distance Sorting if user location available
+    // 6. Distance Sorting if user location available
     if (userCoords) {
       return sortPartnersByDistance(list, userCoords.lat, userCoords.lng);
     }
 
     return list;
-  }, [allPartners, searchQuery, selectedSchemeForPartners, selectedType, userCoords]);
+  }, [allPartners, userProfile.state, userProfile.district, searchQuery, selectedSchemeForPartners, selectedType, userCoords]);
 
   return (
     <div id="partner-locator-view" className="max-w-6xl mx-auto space-y-6">
@@ -136,9 +177,88 @@ export default function PartnerLocatorView() {
 
       {/* Filter and Location Controls Bar */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-4">
+        {/* Location selector row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Search Box */}
-          <div className="relative">
+          {/* State Dropdown */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1">
+              <MapPin className="w-3 h-3 text-blue-800" />
+              <span>State (राज्य)</span>
+            </label>
+            <select
+              id="select-partner-state"
+              value={userProfile.state || ''}
+              onChange={(e) => updateUserProfile({ state: e.target.value })}
+              className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-900 focus:outline-none min-h-[42px] font-semibold text-blue-950 cursor-pointer"
+            >
+              <option value="">-- All India / Select State --</option>
+              {INDIAN_STATES.map((st) => (
+                <option key={st} value={st}>
+                  {st}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* District / City Input */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wide flex items-center gap-1">
+              <Building2 className="w-3 h-3 text-blue-800" />
+              <span>District / City (जिला / शहर)</span>
+            </label>
+            <input
+              id="input-partner-district"
+              type="text"
+              placeholder="e.g. Ranchi, Varanasi, Lucknow"
+              value={userProfile.district || ''}
+              onChange={(e) => updateUserProfile({ district: e.target.value })}
+              className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-900 focus:outline-none min-h-[42px] text-blue-950 font-medium"
+            />
+          </div>
+
+          {/* Scheme Filter */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">
+              <span>Scheme Filter</span>
+            </label>
+            <select
+              id="select-partner-scheme"
+              value={selectedSchemeForPartners || 'ALL'}
+              onChange={(e) => setSelectedSchemeForPartners(e.target.value)}
+              className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-900 focus:outline-none min-h-[42px] cursor-pointer font-medium text-slate-800"
+            >
+              <option value="ALL">🔍 {t('partners.allSchemes')}</option>
+              {allSchemes.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.code} - {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Partner Type Filter */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">
+              <span>Partner Type</span>
+            </label>
+            <select
+              id="select-partner-type"
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-900 focus:outline-none min-h-[42px] cursor-pointer font-medium text-slate-800"
+            >
+              <option value="ALL">🏛️ {t('partners.allTypes')}</option>
+              <option value="SCA">{t('partners.typeSca')}</option>
+              <option value="Bank">{t('partners.typeBank')}</option>
+              <option value="RRB">{t('partners.typeRrb')}</option>
+              <option value="NBFC-MFI">{t('partners.typeMfi')}</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Second row: Search & Geolocation */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+          <div className="sm:col-span-2 relative">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               id="input-partner-search"
@@ -150,40 +270,6 @@ export default function PartnerLocatorView() {
             />
           </div>
 
-          {/* Scheme Filter */}
-          <div>
-            <select
-              id="select-partner-scheme"
-              value={selectedSchemeForPartners || 'ALL'}
-              onChange={(e) => setSelectedSchemeForPartners(e.target.value)}
-              className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-900 focus:outline-none min-h-[44px] cursor-pointer font-medium text-slate-800"
-            >
-              <option value="ALL">🔍 {t('partners.allSchemes')}</option>
-              {allSchemes.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.code} - {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Type Filter */}
-          <div>
-            <select
-              id="select-partner-type"
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-900 focus:outline-none min-h-[44px] cursor-pointer font-medium text-slate-800"
-            >
-              <option value="ALL">🏛️ {t('partners.allTypes')}</option>
-              <option value="SCA">{t('partners.typeSca')}</option>
-              <option value="Bank">{t('partners.typeBank')}</option>
-              <option value="RRB">{t('partners.typeRrb')}</option>
-              <option value="NBFC-MFI">{t('partners.typeMfi')}</option>
-            </select>
-          </div>
-
-          {/* Use My Location Button */}
           <div>
             <button
               id="btn-use-my-location"
@@ -201,17 +287,54 @@ export default function PartnerLocatorView() {
                 {geoLoading
                   ? 'Detecting Location...'
                   : userCoords
-                  ? 'Location Active (Sorted by Distance)'
+                  ? 'GPS Active (Sorted by Distance)'
                   : t('partners.useMyLocation')}
               </span>
             </button>
           </div>
         </div>
 
+        {/* Geolocation feedback if error */}
+        {geoError && (
+          <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-xl flex items-center justify-between gap-2">
+            <span>⚠️ {geoError}</span>
+            <button
+              type="button"
+              onClick={() => setGeoError(null)}
+              className="text-amber-700 hover:text-amber-950 font-bold px-2 py-0.5 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {/* Active Filter Chips Bar */}
-        {(selectedSchemeForPartners !== 'ALL' && selectedSchemeForPartners) || selectedType !== 'ALL' || searchQuery ? (
+        {(selectedSchemeForPartners !== 'ALL' && selectedSchemeForPartners) || 
+          selectedType !== 'ALL' || 
+          searchQuery || 
+          (userProfile.state && userProfile.state !== 'All India') || 
+          userProfile.district ? (
           <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 text-xs">
             <span className="text-slate-500 font-medium">Active filters:</span>
+            
+            {/* Active Location Badge */}
+            {(userProfile.state || userProfile.district) && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-900 font-bold">
+                <MapPin className="w-3 h-3 text-emerald-800" />
+                <span>
+                  Location: {userProfile.district ? `${userProfile.district}, ` : ''}{userProfile.state || 'Selected Area'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => updateUserProfile({ state: '', district: '' })}
+                  className="hover:text-red-700 ml-1 cursor-pointer"
+                  title="Clear location filter"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+
             {selectedSchemeForPartners && selectedSchemeForPartners !== 'ALL' && (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-100 text-blue-900 font-semibold">
                 Scheme: {selectedSchemeForPartners}
@@ -224,6 +347,7 @@ export default function PartnerLocatorView() {
                 </button>
               </span>
             )}
+
             {selectedType !== 'ALL' && (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-200 text-slate-800 font-semibold">
                 Type: {selectedType}
@@ -236,16 +360,32 @@ export default function PartnerLocatorView() {
                 </button>
               </span>
             )}
+
+            {searchQuery && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-medium">
+                Keyword: &quot;{searchQuery}&quot;
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="hover:text-red-700 ml-1 cursor-pointer"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+
             <button
               type="button"
               onClick={() => {
                 setSearchQuery('');
-                setSelectedSchemeForPartners('ALL');
                 setSelectedType('ALL');
+                setSelectedSchemeForPartners('ALL');
+                updateUserProfile({ state: '', district: '' });
+                setUserCoords(null);
               }}
-              className="text-blue-900 hover:underline font-semibold ml-auto"
+              className="text-[11px] text-red-600 hover:text-red-800 underline ml-2 font-medium cursor-pointer"
             >
-              Clear All
+              Clear All Filters
             </button>
           </div>
         ) : null}
@@ -360,22 +500,28 @@ export default function PartnerLocatorView() {
             })
           ) : (
             <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-2">
-              <p className="text-sm font-bold text-slate-700">No partner branches found matching your search</p>
-              <p className="text-xs text-slate-500">Try broadening your search term or clearing the scheme filter.</p>
+              <p className="text-sm font-bold text-slate-700">
+                {userProfile.district || (userProfile.state && userProfile.state !== 'All India')
+                  ? `No authorized channel partners found for ${userProfile.district ? `${userProfile.district}, ` : ''}${userProfile.state || ''}`
+                  : 'No partner branches found matching your search'}
+              </p>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Please check another district/state or call the National Scheduled Castes Finance and Development Corporation (NSFDC) toll-free helpline at 1800-11-2001 for nodal branch assistance.
+              </p>
             </div>
           )}
         </div>
 
-        {/* RIGHT: Leaflet Interactive Map View (6 cols) */}
-        <div className="lg:col-span-6 sticky top-24">
+        {/* RIGHT: Interactive Map View (6 cols) */}
+        <div className="lg:col-span-6 lg:sticky lg:top-24">
           <div className="bg-white rounded-2xl border border-slate-200 p-3 shadow-xs space-y-2">
-            <div className="flex items-center justify-between px-2 pt-1">
+            <div className="flex items-center justify-between px-2 pt-1 gap-2 flex-wrap">
               <span className="text-xs font-bold text-blue-950 uppercase tracking-wide flex items-center gap-1.5">
                 <Compass className="w-4 h-4 text-blue-900" />
                 Channel Partner Network Map
               </span>
-              <span className="text-[11px] text-slate-500">
-                OpenStreetMap Tiles
+              <span className="text-[11px] text-slate-500 font-medium">
+                Interactive Map View
               </span>
             </div>
             

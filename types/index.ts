@@ -95,26 +95,28 @@ export type SocialCategory = 'GENERAL' | 'OBC' | 'SC' | 'ST';
 export type Gender = 'male' | 'female' | 'transgender';
 
 export interface UserProfile {
-  age: number;
+  age?: number | null;
   state: string;
-  gender: Gender;
+  district: string;
+  gender?: Gender | null;
   occupation: string;
-  income: number;
-  category: SocialCategory;
-  projectCost: number;
-  educationLevel: EducationLevel;
+  income?: number | null;
+  category?: SocialCategory | null;
+  projectCost?: number | null;
+  educationLevel?: EducationLevel | '' | null;
 }
 
 export interface SchemeFilterInput {
   projectType: string;
-  estimatedCost: number;
-  familyIncome: number;
-  educationLevel: EducationLevel;
+  estimatedCost?: number | null;
+  familyIncome?: number | null;
+  educationLevel?: EducationLevel | '' | null;
   applicantCategory: ApplicantCategory;
-  age?: number;
+  age?: number | null;
   state?: string;
-  gender?: Gender;
-  category?: SocialCategory;
+  district?: string;
+  gender?: Gender | null;
+  category?: SocialCategory | null;
 }
 
 export interface SchemeMatchResult {

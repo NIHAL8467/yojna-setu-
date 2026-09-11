@@ -71,8 +71,8 @@ export default function AmortizationTable({ calculation }: AmortizationTableProp
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs border-collapse">
+      <div className="overflow-x-auto scrollbar-thin">
+        <table className="w-full min-w-[540px] text-left text-xs border-collapse">
           <thead>
             <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
               <th className="py-3 px-4">{t('calculator.monthCol')}</th>

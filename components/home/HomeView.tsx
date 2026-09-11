@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { useApp } from '@/context/AppContext';
-import { getAllSchemes } from '@/lib/schemes';
 import YojnaWheelIllustration from '@/components/ui/YojnaWheelIllustration';
 import { 
   Compass, 
@@ -11,15 +10,11 @@ import {
   ArrowRight, 
   CheckCircle2, 
   FileText,
-  FileCheck,
-  Building2,
-  Percent,
-  Sparkles
+  FileCheck
 } from 'lucide-react';
 
 export default function HomeView() {
-  const { locale, setActiveTab, setSelectedSchemeForCalculator, setSelectedSchemeForPartners } = useApp();
-  const schemes = getAllSchemes();
+  const { locale, setActiveTab } = useApp();
 
   const quickServices = [
     {
@@ -48,11 +43,11 @@ export default function HomeView() {
   return (
     <div id="home-view" className="space-y-12 sm:space-y-14">
       {/* HERO SECTION (Matches Stitch UI Mockup) */}
-      <section className="py-4 sm:py-8">
-        <div className="flex flex-col lg:flex-row items-center justify-between gap-10 lg:gap-12">
+      <section className="py-2 sm:py-6 lg:py-8">
+        <div className="flex flex-col lg:flex-row items-center justify-between gap-8 lg:gap-12">
           {/* Left Column: Headline, Description & CTAs */}
-          <div className="flex-1 space-y-6 text-left max-w-2xl">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0F294A] tracking-tight leading-[1.15]">
+          <div className="flex-1 space-y-4 sm:space-y-6 text-left max-w-2xl w-full">
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-[#0F294A] tracking-tight leading-[1.18] sm:leading-[1.15]">
               {locale === 'hi' 
                 ? 'अपने लिए सही सरकारी योजना खोजें' 
                 : 'Find the Right Government Scheme for You'}
@@ -65,12 +60,12 @@ export default function HomeView() {
             </p>
 
             {/* Action Buttons as per Stitch UI */}
-            <div className="flex flex-wrap items-center gap-3.5 pt-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2 w-full sm:w-auto">
               <button
                 id="btn-hero-find-scheme"
                 type="button"
                 onClick={() => setActiveTab('schemes')}
-                className="px-7 py-3.5 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all cursor-pointer min-h-[46px] inline-flex items-center justify-center"
+                className="w-full sm:w-auto px-6 sm:px-7 py-3.5 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all cursor-pointer min-h-[46px] inline-flex items-center justify-center text-center"
               >
                 {locale === 'hi' ? 'मेरी योजना खोजें' : 'Find My Scheme'}
               </button>
@@ -78,15 +73,8 @@ export default function HomeView() {
               <button
                 id="btn-hero-explore-schemes"
                 type="button"
-                onClick={() => {
-                  const el = document.getElementById('featured-schemes-section');
-                  if (el) {
-                    el.scrollIntoView({ behavior: 'smooth' });
-                  } else {
-                    setActiveTab('schemes');
-                  }
-                }}
-                className="px-7 py-3.5 rounded-xl bg-[#003366] hover:bg-[#002244] text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all cursor-pointer min-h-[46px] inline-flex items-center justify-center"
+                onClick={() => setActiveTab('schemes')}
+                className="w-full sm:w-auto px-6 sm:px-7 py-3.5 rounded-xl bg-[#003366] hover:bg-[#002244] text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all cursor-pointer min-h-[46px] inline-flex items-center justify-center text-center"
               >
                 {locale === 'hi' ? 'योजनाएं देखें' : 'Explore Schemes'}
               </button>
@@ -94,9 +82,9 @@ export default function HomeView() {
           </div>
 
           {/* Right Column: Wheel Illustration Container Card */}
-          <div className="w-full lg:w-[460px] shrink-0">
-            <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-sm flex items-center justify-center">
-              <YojnaWheelIllustration />
+          <div className="w-full lg:w-[460px] max-w-full shrink-0 overflow-hidden">
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-3 sm:p-6 border border-slate-200/90 shadow-sm flex items-center justify-center overflow-hidden">
+              <YojnaWheelIllustration className="w-full max-w-full" />
             </div>
           </div>
         </div>
@@ -105,10 +93,10 @@ export default function HomeView() {
       {/* QUICK SERVICES SECTION (Matches Stitch UI Mockup) */}
       <section
         id="quick-services-section"
-        className="bg-[#F1F5F9] rounded-3xl p-6 sm:p-10 border border-slate-200/80 shadow-2xs space-y-6"
+        className="bg-[#F1F5F9] rounded-2xl sm:rounded-3xl p-5 sm:p-8 lg:p-10 border border-slate-200/80 shadow-2xs space-y-5 sm:space-y-6"
       >
         <div>
-          <h2 className="text-2xl sm:text-3xl font-black text-[#0F294A] tracking-tight">
+          <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-[#0F294A] tracking-tight">
             {locale === 'hi' ? 'त्वरित सेवाएं (Quick Services)' : 'Quick Services'}
           </h2>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium">
@@ -160,93 +148,8 @@ export default function HomeView() {
         </div>
       </section>
 
-      {/* FEATURED SCHEMES SECTION */}
-      <section id="featured-schemes-section" className="space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-black text-[#0F294A] tracking-tight">
-              {locale === 'hi' ? 'प्रमुख सरकारी रियायती ऋण योजनाएं' : 'Featured Government Concessional Schemes'}
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-              {locale === 'hi' 
-                ? 'स्वरोजगार, शिक्षा और व्यवसाय विस्तार के लिए रियायती ब्याज दरें'
-                : 'Direct interest-subsidized credit lines for entrepreneurs, women, artisans, and students'}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('schemes')}
-            className="text-xs font-bold text-[#003366] hover:text-blue-900 flex items-center gap-1.5 hover:underline cursor-pointer self-start sm:self-auto"
-          >
-            <span>{locale === 'hi' ? 'सभी योजनाएं देखें' : 'View All Schemes'}</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {schemes.slice(0, 6).map((scheme) => (
-            <div
-              key={scheme.id}
-              className="relative overflow-hidden bg-white/90 rounded-2xl border border-slate-200/80 p-5 shadow-2xs hover:shadow-xs transition-all space-y-3 flex flex-col justify-between group"
-            >
-              {/* Blurred National Initiatives & Schemes Background Image */}
-              <div
-                className="absolute inset-0 -z-10 bg-cover bg-center filter blur-[5px] scale-110 opacity-20 group-hover:scale-115 group-hover:opacity-30 transition-all duration-500 pointer-events-none"
-                style={{ backgroundImage: "url('/images/national-schemes-emblem.svg')" }}
-              />
-              {/* Soft overlay ensuring high contrast & clear content */}
-              <div className="absolute inset-0 -z-10 bg-white/88 backdrop-blur-[1px] pointer-events-none" />
-
-              <div className="relative z-10 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-0.5 bg-[#003366] text-amber-300 text-[11px] font-bold rounded-md shadow-2xs">
-                    {scheme.code}
-                  </span>
-                  <span className="text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
-                    ~{scheme.terms.interestRatePercentNumeric}% p.a.
-                  </span>
-                </div>
-
-                <h3 className="text-sm font-bold text-[#0F294A] leading-snug">
-                  {locale === 'hi' ? scheme.nameHi : scheme.name}
-                </h3>
-
-                <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed font-medium">
-                  {locale === 'hi' ? scheme.descriptionHi : scheme.description}
-                </p>
-              </div>
-
-              <div className="relative z-10 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedSchemeForCalculator(scheme);
-                    setActiveTab('calculator');
-                  }}
-                  className="text-xs font-bold text-[#003366] hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                >
-                  {locale === 'hi' ? 'ईएमआई गणना' : 'Calculate EMI'}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedSchemeForPartners(scheme.id);
-                    setActiveTab('partners');
-                  }}
-                  className="text-xs font-bold text-white bg-[#003366] hover:bg-[#002244] px-3.5 py-1.5 rounded-lg transition-colors cursor-pointer shadow-2xs"
-                >
-                  {locale === 'hi' ? 'शाखाएं खोजें' : 'Find Partners'}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* HOW APPLICATION PROCESS WORKS */}
-      <section className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6">
+      <section className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 p-5 sm:p-8 space-y-5 sm:space-y-6">
         <div className="text-center max-w-2xl mx-auto space-y-1">
           <h2 className="text-xl sm:text-2xl font-black text-[#0F294A] tracking-tight">
             {locale === 'hi' ? 'आवेदन प्रक्रिया (चरण-दर-चरण)' : 'How to Apply for Schemes (Step-by-Step)'}
@@ -258,7 +161,7 @@ export default function HomeView() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[
             {
               step: '1',
@@ -285,7 +188,7 @@ export default function HomeView() {
               icon: CheckCircle2,
             },
           ].map((item) => (
-            <div key={item.step} className="bg-[#F8FAFC] rounded-2xl p-5 border border-slate-200/90 space-y-2 shadow-2xs">
+            <div key={item.step} className="bg-[#F8FAFC] rounded-2xl p-4 sm:p-5 border border-slate-200/90 space-y-2 shadow-2xs">
               <div className="w-8 h-8 rounded-xl bg-[#003366] text-amber-300 font-black flex items-center justify-center text-xs">
                 {item.step}
               </div>

@@ -9,9 +9,11 @@ import { getStandard2LEmi, CATEGORY_CONCESSIONS } from './emi-calculator';
 export function matchSchemes(input: SchemeFilterInput): SchemeMatchResult[] {
   const allSchemes = getAllSchemes();
   const results: SchemeMatchResult[] = [];
-  const selectedCategory: SocialCategory = input.category || 'OBC';
+  const selectedCategory: SocialCategory = input.category || 'GENERAL';
   const concessionalEmi = getStandard2LEmi(selectedCategory);
   const subventionAmount = Math.max(0, 6499 - concessionalEmi);
+  const familyIncome = input.familyIncome ?? 0;
+  const estimatedCost = input.estimatedCost ?? 0;
 
   for (const scheme of allSchemes) {
     let score = 50; // base score
@@ -20,7 +22,7 @@ export function matchSchemes(input: SchemeFilterInput): SchemeMatchResult[] {
     let isEligible = true;
 
     // 0. Age Eligibility Check
-    if (input.age !== undefined) {
+    if (input.age !== undefined && input.age !== null) {
       if (input.age < 18) {
         isEligible = false;
         warnings.push(`Applicant age (${input.age} yrs) is below minimum required legal loan age of 18.`);
@@ -58,22 +60,22 @@ export function matchSchemes(input: SchemeFilterInput): SchemeMatchResult[] {
     }
 
     // 2. Income Check (NSFDC / Government ceiling is typically ₹3,00,000 to ₹5,00,000 p.a.)
-    if (input.familyIncome > scheme.eligibility.maxFamilyIncome) {
+    if (familyIncome > 0 && familyIncome > scheme.eligibility.maxFamilyIncome) {
       isEligible = false;
-      warnings.push(`Annual family income (₹${input.familyIncome.toLocaleString('en-IN')}) exceeds scheme ceiling of ₹${scheme.eligibility.maxFamilyIncome.toLocaleString('en-IN')}.`);
+      warnings.push(`Annual family income (₹${familyIncome.toLocaleString('en-IN')}) exceeds scheme ceiling of ₹${scheme.eligibility.maxFamilyIncome.toLocaleString('en-IN')}.`);
       score -= 40;
-    } else {
+    } else if (familyIncome > 0) {
       score += 15;
-      matchReasons.push(`Your family income (₹${input.familyIncome.toLocaleString('en-IN')}) is within the ₹${scheme.eligibility.maxFamilyIncome.toLocaleString('en-IN')} limit.`);
-      if (input.familyIncome > scheme.eligibility.maxFamilyIncome * 0.85) {
+      matchReasons.push(`Your family income (₹${familyIncome.toLocaleString('en-IN')}) is within the ₹${scheme.eligibility.maxFamilyIncome.toLocaleString('en-IN')} limit.`);
+      if (familyIncome > scheme.eligibility.maxFamilyIncome * 0.85) {
         warnings.push('Income is near the maximum eligibility threshold. Keep Tehsildar income certificate ready.');
       }
     }
 
     // 3. Project Type / Sector Compatibility Check
     const projectTypes = scheme.eligibility.projectTypes;
-    const isDirectProjectMatch = projectTypes.includes(input.projectType);
-    const isGeneralBusinessMatch = (input.projectType === 'business' || input.projectType === 'artisan' || input.projectType === 'retail') && projectTypes.includes('business');
+    const isDirectProjectMatch = input.projectType ? projectTypes.includes(input.projectType) : false;
+    const isGeneralBusinessMatch = input.projectType ? (input.projectType === 'business' || input.projectType === 'artisan' || input.projectType === 'retail') && projectTypes.includes('business') : false;
 
     if (isDirectProjectMatch) {
       score += 30;
@@ -85,32 +87,35 @@ export function matchSchemes(input: SchemeFilterInput): SchemeMatchResult[] {
       isEligible = false;
       warnings.push('Enterprise loan scheme is not applicable for educational course fees.');
       score -= 50;
-    } else if (input.projectType !== 'education' && scheme.category === 'education') {
+    } else if (input.projectType && input.projectType !== 'education' && scheme.category === 'education') {
       isEligible = false;
       warnings.push('Education Loan Scheme is solely reserved for professional student degrees.');
       score -= 50;
-    } else {
+    } else if (input.projectType) {
       score -= 10;
     }
 
     // 4. Project Cost & Max Loan Amount Sizing
     const maxCost = scheme.eligibility.maxProjectCostNumeric;
     const nsfdcSharePct = scheme.terms.nsfdcSharePercentNumeric || 90;
+    const costForCalculation = estimatedCost > 0 ? estimatedCost : 200000;
     const calculatedLoanLimit = Math.min(
       scheme.terms.maxLoanAmountNumeric,
-      Math.round(input.estimatedCost * (nsfdcSharePct / 100))
+      Math.round(costForCalculation * (nsfdcSharePct / 100))
     );
 
-    if (input.estimatedCost <= maxCost) {
-      score += 15;
-      matchReasons.push(`Project cost (₹${input.estimatedCost.toLocaleString('en-IN')}) is within the permissible limit of up to ₹${maxCost.toLocaleString('en-IN')}.`);
-    } else {
-      if (scheme.id === 'micro_credit_finance' || scheme.id === 'mahila_samriddhi_yojana') {
-        warnings.push(`Project cost (₹${input.estimatedCost.toLocaleString('en-IN')}) exceeds micro-credit ceiling (₹${maxCost.toLocaleString('en-IN')}). Consider applying under Term Loan Scheme for higher funding.`);
-        score -= 20;
+    if (estimatedCost > 0) {
+      if (estimatedCost <= maxCost) {
+        score += 15;
+        matchReasons.push(`Project cost (₹${estimatedCost.toLocaleString('en-IN')}) is within the permissible limit of up to ₹${maxCost.toLocaleString('en-IN')}.`);
       } else {
-        warnings.push(`Project cost exceeds ₹${maxCost.toLocaleString('en-IN')}. Maximum assistance is capped at ₹${scheme.terms.maxLoanAmountNumeric.toLocaleString('en-IN')}.`);
-        score -= 10;
+        if (scheme.id === 'micro_credit_finance' || scheme.id === 'mahila_samriddhi_yojana') {
+          warnings.push(`Project cost (₹${estimatedCost.toLocaleString('en-IN')}) exceeds micro-credit ceiling (₹${maxCost.toLocaleString('en-IN')}). Consider applying under Term Loan Scheme for higher funding.`);
+          score -= 20;
+        } else {
+          warnings.push(`Project cost exceeds ₹${maxCost.toLocaleString('en-IN')}. Maximum assistance is capped at ₹${scheme.terms.maxLoanAmountNumeric.toLocaleString('en-IN')}.`);
+          score -= 10;
+        }
       }
     }
 

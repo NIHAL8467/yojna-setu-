@@ -69,20 +69,20 @@ export default function SchemeDetailsModal({ result, onClose }: SchemeDetailsMod
   return (
     <div
       id="scheme-details-modal"
-      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4"
     >
       <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Modal Header */}
-        <div className="bg-blue-900 text-white px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="px-2.5 py-1 bg-amber-400 text-blue-950 font-bold text-xs rounded uppercase">
+        <div className="bg-blue-900 text-white px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <span className="px-2.5 py-1 bg-amber-400 text-blue-950 font-bold text-xs rounded uppercase shrink-0">
               {scheme.code}
             </span>
-            <div>
-              <h2 className="text-lg font-bold leading-tight">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-bold leading-tight truncate">
                 {locale === 'hi' ? scheme.nameHi : scheme.name}
               </h2>
-              <span className="text-xs text-blue-200">
+              <span className="text-[11px] sm:text-xs text-blue-200 block truncate">
                 National Scheduled Castes Finance and Development Corporation (NSFDC)
               </span>
             </div>
@@ -90,10 +90,10 @@ export default function SchemeDetailsModal({ result, onClose }: SchemeDetailsMod
           <button
             type="button"
             onClick={onClose}
-            className="text-blue-200 hover:text-white p-1.5 rounded-lg hover:bg-blue-800 transition-colors cursor-pointer"
+            className="text-blue-200 hover:text-white p-1.5 rounded-lg hover:bg-blue-800 transition-colors cursor-pointer shrink-0"
             aria-label="Close"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
 
@@ -224,12 +224,12 @@ export default function SchemeDetailsModal({ result, onClose }: SchemeDetailsMod
         </div>
 
         {/* Modal Footer Controls */}
-        <div className="bg-slate-50 border-t border-slate-200 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-slate-50 border-t border-slate-200 px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleShare}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors min-h-[38px] cursor-pointer"
             >
               {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Share2 className="w-4 h-4" />}
               <span>{copied ? t('common.copied') : t('common.share')}</span>
@@ -237,18 +237,18 @@ export default function SchemeDetailsModal({ result, onClose }: SchemeDetailsMod
             <button
               type="button"
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 hover:text-slate-900 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors min-h-[38px] cursor-pointer"
             >
               <Download className="w-4 h-4" />
               <span>{t('common.downloadSummary')}</span>
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col xs:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={handleGoToCalculator}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-800 bg-slate-200 hover:bg-slate-300 rounded-lg transition-colors"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-bold text-slate-800 bg-slate-200 hover:bg-slate-300 rounded-lg transition-colors min-h-[40px] cursor-pointer"
             >
               <Calculator className="w-4 h-4 text-blue-900" />
               <span>{t('common.calculateEmi')}</span>
@@ -256,9 +256,9 @@ export default function SchemeDetailsModal({ result, onClose }: SchemeDetailsMod
             <button
               type="button"
               onClick={handleGoToPartners}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-blue-900 hover:bg-blue-950 rounded-lg shadow-xs transition-colors"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-blue-900 hover:bg-blue-950 rounded-lg shadow-xs transition-colors min-h-[40px] cursor-pointer text-center"
             >
-              <MapPin className="w-4 h-4 text-amber-400" />
+              <MapPin className="w-4 h-4 text-amber-400 shrink-0" />
               <span>{t('common.findNearbyPartners')}</span>
             </button>
           </div>

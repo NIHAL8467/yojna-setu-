@@ -347,7 +347,7 @@ export function FloatingYojnaMitra() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-20 right-4 sm:bottom-22 sm:right-6 lg:bottom-6 lg:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[410px] max-w-[430px] h-[580px] max-h-[82vh] sm:max-h-[640px] flex flex-col bg-white rounded-2xl shadow-2xl shadow-slate-900/30 border border-slate-200/90 overflow-hidden font-sans"
+            className="fixed bottom-20 right-3 sm:bottom-22 sm:right-6 lg:bottom-6 lg:right-6 z-50 w-[calc(100vw-1.5rem)] sm:w-[410px] max-w-[430px] h-[580px] max-h-[82vh] sm:max-h-[640px] flex flex-col bg-white rounded-2xl shadow-2xl shadow-slate-900/30 border border-slate-200/90 overflow-hidden font-sans"
           >
             {/* National Tricolor Hairline Stripe on Top */}
             <div className="h-1 w-full flex">

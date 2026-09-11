@@ -1,13 +1,20 @@
 'use client';
 
 import React from 'react';
-import { Briefcase, IndianRupee, Users, GraduationCap, Check } from 'lucide-react';
+import { UserCheck, Briefcase, GraduationCap, Award, Check } from 'lucide-react';
+
+export interface StepItem {
+  num: number;
+  title: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
 
 interface StepIndicatorProps {
   currentStep: number;
-  totalSteps: number;
+  totalSteps?: number;
   onStepClick?: (step: number) => void;
   locale?: string;
+  steps?: StepItem[];
 }
 
 export default function StepIndicator({
@@ -15,12 +22,13 @@ export default function StepIndicator({
   totalSteps = 4,
   onStepClick,
   locale = 'en',
+  steps: customSteps,
 }: StepIndicatorProps) {
-  const steps = [
-    { num: 1, title: locale === 'hi' ? 'परियोजना' : 'Project', icon: Briefcase },
-    { num: 2, title: locale === 'hi' ? 'लागत' : 'Cost', icon: IndianRupee },
-    { num: 3, title: locale === 'hi' ? 'पारिवारिक आय' : 'Income', icon: Users },
-    { num: 4, title: locale === 'hi' ? 'प्रोफ़ाइल' : 'Profile', icon: GraduationCap },
+  const steps: StepItem[] = customSteps || [
+    { num: 1, title: locale === 'hi' ? 'विवरण व जाति' : 'Demographics', icon: UserCheck },
+    { num: 2, title: locale === 'hi' ? 'व्यवसाय' : 'Occupation', icon: Briefcase },
+    { num: 3, title: locale === 'hi' ? 'शिक्षा' : 'Education', icon: GraduationCap },
+    { num: 4, title: locale === 'hi' ? 'योजनाएं' : 'Results', icon: Award },
   ];
 
   return (

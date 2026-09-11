@@ -201,7 +201,7 @@ export default function YojnaSetuLogo({
               Setu
             </span>
           </div>
-          <span className="text-[10px] text-slate-500 font-semibold tracking-wider uppercase -mt-0.5">
+          <span className="hidden min-[420px]:inline-block text-[10px] text-slate-500 font-semibold tracking-wider uppercase -mt-0.5 truncate max-w-[200px] sm:max-w-none">
             National Scheme Bridge Portal
           </span>
         </div>

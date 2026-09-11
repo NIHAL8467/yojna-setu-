@@ -49,7 +49,8 @@ export const CATEGORY_CONCESSIONS: Record<SocialCategory, {
 /**
  * Returns the exact benchmark EMI for a standard 2 Lakhs (₹2,00,000) loan over 36 months.
  */
-export function getStandard2LEmi(category: SocialCategory): number {
+export function getStandard2LEmi(category?: SocialCategory | null): number {
+  if (!category) return 6499;
   return CATEGORY_CONCESSIONS[category]?.benchmarkEmi2L ?? 6499;
 }
 
@@ -59,14 +60,15 @@ export function getStandard2LEmi(category: SocialCategory): number {
 export function calculateCategoryAdjustedEmi(
   principal: number,
   baseEmi: number,
-  category: SocialCategory
+  category?: SocialCategory | null
 ): {
   adjustedEmi: number;
   monthlySubvention: number;
   totalSubventionSavings: number;
 } {
+  const cat = category || 'GENERAL';
   if (principal === 200000) {
-    const adjusted = getStandard2LEmi(category);
+    const adjusted = getStandard2LEmi(cat);
     const subvention = Math.max(0, 6499 - adjusted);
     return {
       adjustedEmi: adjusted,
@@ -76,7 +78,7 @@ export function calculateCategoryAdjustedEmi(
   }
 
   // Scale subvention proportionally to loan amount
-  const subventionFactor = (CATEGORY_CONCESSIONS[category]?.monthlySubventionOn2L ?? 0) / 200000;
+  const subventionFactor = (CATEGORY_CONCESSIONS[cat]?.monthlySubventionOn2L ?? 0) / 200000;
   const scaledMonthlySubvention = Math.round(principal * subventionFactor);
   const adjustedEmi = Math.max(100, Math.round(baseEmi - scaledMonthlySubvention));
 

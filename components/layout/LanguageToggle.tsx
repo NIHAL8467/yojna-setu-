@@ -10,14 +10,14 @@ export default function LanguageToggle() {
   return (
     <div
       id="language-toggle-wrapper"
-      className="inline-flex items-center gap-1.5 bg-slate-100/90 border border-slate-200 rounded-lg p-1 shadow-2xs"
+      className="inline-flex items-center gap-1 sm:gap-1.5 bg-slate-100/90 border border-slate-200 rounded-lg p-0.5 sm:p-1 shadow-2xs shrink-0"
     >
-      <Languages className="w-4 h-4 text-slate-600 ml-1.5 shrink-0" />
+      <Languages className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600 ml-1 sm:ml-1.5 shrink-0" />
       <button
         id="btn-lang-en"
         type="button"
         onClick={() => setLocale('en')}
-        className={`px-3 py-1 text-xs font-bold rounded-md transition-all cursor-pointer min-h-[30px] ${
+        className={`px-2 sm:px-3 py-1 text-[11px] sm:text-xs font-bold rounded-md transition-all cursor-pointer min-h-[28px] sm:min-h-[30px] ${
           locale === 'en'
             ? 'bg-[#003366] text-white shadow-xs'
             : 'text-slate-700 hover:text-blue-950 hover:bg-slate-200/80'
@@ -30,7 +30,7 @@ export default function LanguageToggle() {
         id="btn-lang-hi"
         type="button"
         onClick={() => setLocale('hi')}
-        className={`px-3 py-1 text-xs font-bold rounded-md transition-all cursor-pointer min-h-[30px] ${
+        className={`px-2 sm:px-3 py-1 text-[11px] sm:text-xs font-bold rounded-md transition-all cursor-pointer min-h-[28px] sm:min-h-[30px] ${
           locale === 'hi'
             ? 'bg-[#003366] text-white shadow-xs'
             : 'text-slate-700 hover:text-blue-950 hover:bg-slate-200/80'

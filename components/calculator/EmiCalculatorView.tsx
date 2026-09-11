@@ -136,12 +136,12 @@ export default function EmiCalculatorView() {
             </p>
           </div>
           <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-blue-50 text-blue-900 border border-blue-200 self-start sm:self-auto">
-            Active: <span className="font-extrabold">{userCategory}</span>
+            Active: <span className="font-extrabold">{userCategory || 'None (Standard)'}</span>
           </span>
         </div>
 
         {/* 4 Category Selection Buttons Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
           {categories.map((cat) => {
             const isSelected = userCategory === cat;
             const benchmark = getStandard2LEmi(cat);
@@ -152,7 +152,7 @@ export default function EmiCalculatorView() {
                 type="button"
                 id={`btn-calc-category-${cat}`}
                 onClick={() => setUserCategory(cat)}
-                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between min-h-[96px] ${
+                className={`p-3 sm:p-3.5 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between min-h-[90px] sm:min-h-[96px] ${
                   isSelected
                     ? 'border-blue-900 bg-blue-50/80 ring-2 ring-blue-900 shadow-xs'
                     : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
@@ -172,7 +172,7 @@ export default function EmiCalculatorView() {
                   </span>
                 </div>
 
-                <div className="mt-2 pt-2 border-t border-slate-100 flex items-baseline justify-between">
+                <div className="mt-2 pt-2 border-t border-slate-100 flex items-baseline justify-between flex-wrap gap-1">
                   <span className="text-base sm:text-lg font-black text-blue-950">
                     ₹{benchmark.toLocaleString('en-IN')}
                     <span className="text-[10px] font-normal text-slate-500">/mo</span>
@@ -189,9 +189,9 @@ export default function EmiCalculatorView() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
         {/* LEFT COLUMN: Input Form Controls (7 cols) */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-5 sm:p-7 shadow-xs space-y-6">
+        <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 lg:p-7 shadow-xs space-y-6">
           {/* Scheme Selector */}
           <div className="space-y-2">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">

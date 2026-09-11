@@ -6,14 +6,15 @@ import enMessages from '@/messages/en.json';
 import hiMessages from '@/messages/hi.json';
 
 const DEFAULT_USER_PROFILE: UserProfile = {
-  age: 28,
-  state: 'Delhi',
-  gender: 'male',
-  occupation: 'business',
-  income: 250000,
-  category: 'OBC',
-  projectCost: 200000,
-  educationLevel: '10th_pass',
+  age: null,
+  state: '',
+  district: '',
+  gender: null,
+  occupation: '',
+  income: null,
+  category: null,
+  projectCost: null,
+  educationLevel: '',
 };
 
 interface AppContextType {
@@ -31,8 +32,8 @@ interface AppContextType {
   // User Profile & Category Concession
   userProfile: UserProfile;
   updateUserProfile: (patch: Partial<UserProfile>) => void;
-  userCategory: SocialCategory;
-  setUserCategory: (category: SocialCategory) => void;
+  userCategory: SocialCategory | null;
+  setUserCategory: (category: SocialCategory | null) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -59,7 +60,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
     if (typeof window !== 'undefined') {
       try {
-        const saved = localStorage.getItem('yojna_user_profile_v2');
+        const saved = localStorage.getItem('yojna_user_profile_v3');
         if (saved) {
           return { ...DEFAULT_USER_PROFILE, ...JSON.parse(saved) };
         }
@@ -75,7 +76,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const updated = { ...prev, ...patch };
       if (typeof window !== 'undefined') {
         try {
-          localStorage.setItem('yojna_user_profile_v2', JSON.stringify(updated));
+          localStorage.setItem('yojna_user_profile_v3', JSON.stringify(updated));
         } catch {
           // Ignore
         }
@@ -84,11 +85,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const setUserCategory = useCallback((category: SocialCategory) => {
+  const setUserCategory = useCallback((category: SocialCategory | null) => {
     updateUserProfile({ category });
   }, [updateUserProfile]);
 
-  const userCategory = userProfile.category;
+  const userCategory = userProfile.category ?? null;
 
   const setLocale = (newLocale: Locale) => {
     setLocaleState(newLocale);

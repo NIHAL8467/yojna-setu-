@@ -197,21 +197,21 @@ export default function SchemeCard({ result, onViewDetails }: SchemeCardProps) {
         )}
 
         {/* Action Buttons */}
-        <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+        <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
           <button
             type="button"
             onClick={() => onViewDetails(result)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-blue-900 hover:bg-blue-50 border border-blue-200 transition-colors min-h-[44px] cursor-pointer"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-blue-900 hover:bg-blue-50 border border-blue-200 transition-colors min-h-[44px] cursor-pointer"
           >
             <Info className="w-4 h-4" />
             <span>{t('common.viewDetails')}</span>
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col xs:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={handleCalculateEmi}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors min-h-[44px] cursor-pointer"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors min-h-[44px] cursor-pointer"
             >
               <Calculator className="w-4 h-4 text-blue-900" />
               <span>{t('common.calculateEmi')}</span>
@@ -220,11 +220,11 @@ export default function SchemeCard({ result, onViewDetails }: SchemeCardProps) {
             <button
               type="button"
               onClick={handleFindPartners}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-blue-900 hover:bg-blue-950 text-white shadow-xs transition-colors min-h-[44px] cursor-pointer"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-blue-900 hover:bg-blue-950 text-white shadow-xs transition-colors min-h-[44px] cursor-pointer text-center"
             >
-              <MapPin className="w-4 h-4 text-amber-400" />
+              <MapPin className="w-4 h-4 text-amber-400 shrink-0" />
               <span>{t('common.findNearbyPartners')}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <ArrowRight className="w-3.5 h-3.5 shrink-0" />
             </button>
           </div>
         </div>
