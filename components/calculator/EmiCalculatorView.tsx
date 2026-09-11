@@ -6,7 +6,6 @@ import { getAllSchemes } from '@/lib/schemes';
 import { 
   calculateEmiSchedule, 
   CATEGORY_CONCESSIONS, 
-  getStandard2LEmi, 
   calculateCategoryAdjustedEmi 
 } from '@/lib/emi-calculator';
 import type { Scheme, EmiCalculationResult, SocialCategory } from '@/types';
@@ -139,20 +138,20 @@ export default function EmiCalculatorView() {
         </p>
       </div>
 
-      {/* Category / Caste Concession Benchmark Bar (Gen: 6499, OBC: 5999, SC: 5499, ST: 4999) */}
-      <div className="bg-white rounded-2xl border border-blue-200 p-5 shadow-xs space-y-4">
+      {/* Category / Caste Concession Bar */}
+      <div className="bg-white rounded-2xl border border-blue-200 p-4 sm:p-5 shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
           <div>
             <span className="text-xs font-bold text-blue-950 uppercase tracking-wider flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-blue-800" />
+              <Users className="w-4 h-4 text-blue-800 shrink-0" />
               <span>Select Category (Caste) — Concessional EMI Subvention</span>
             </span>
             <p className="text-xs text-slate-500 mt-0.5">
-              Government subvention benchmarked for a ₹2,00,000 (2 Lakhs) standard loan:
+              Select your social category to check affirmative scheme eligibility and concessional terms:
             </p>
           </div>
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-md bg-blue-50 text-blue-900 border border-blue-200 self-start sm:self-auto">
-            Active: <span className="font-extrabold">{userCategory || 'None (Standard)'}</span>
+          <span className="text-xs font-bold px-3 py-1 rounded-md bg-blue-50 text-blue-950 border border-blue-200 self-start sm:self-auto">
+            Active: <span className="text-blue-700 underline">{userCategory || 'None (Standard)'}</span>
           </span>
         </div>
 
@@ -160,7 +159,6 @@ export default function EmiCalculatorView() {
         <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
           {categories.map((cat) => {
             const isSelected = userCategory === cat;
-            const benchmark = getStandard2LEmi(cat);
             const concession = CATEGORY_CONCESSIONS[cat];
             return (
               <button
@@ -168,37 +166,18 @@ export default function EmiCalculatorView() {
                 type="button"
                 id={`btn-calc-category-${cat}`}
                 onClick={() => setUserCategory(cat)}
-                className={`p-3 sm:p-3.5 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between min-h-[90px] sm:min-h-[96px] ${
+                className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative flex items-center justify-between min-h-[56px] ${
                   isSelected
                     ? 'border-blue-900 bg-blue-50/80 ring-2 ring-blue-900 shadow-xs'
                     : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                 }`}
               >
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-xs text-blue-950 tracking-wide">
-                      {concession.label}
-                    </span>
-                    {isSelected && (
-                      <CheckCircle2 className="w-4 h-4 text-blue-900 shrink-0" />
-                    )}
-                  </div>
-                  <span className="text-[11px] text-slate-500 block mt-0.5">
-                    ₹2L Loan EMI:
-                  </span>
-                </div>
-
-                <div className="mt-2 pt-2 border-t border-slate-100 flex items-baseline justify-between flex-wrap gap-1">
-                  <span className="text-base sm:text-lg font-black text-blue-950">
-                    ₹{benchmark.toLocaleString('en-IN')}
-                    <span className="text-[10px] font-normal text-slate-500">/mo</span>
-                  </span>
-                  {concession.monthlySubventionOn2L > 0 && (
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                      -₹{concession.monthlySubventionOn2L}
-                    </span>
-                  )}
-                </div>
+                <span className="font-extrabold text-xs sm:text-sm text-blue-950 tracking-wide">
+                  {concession.label}
+                </span>
+                {isSelected && (
+                  <CheckCircle2 className="w-4 h-4 text-blue-900 shrink-0 ml-2" />
+                )}
               </button>
             );
           })}
