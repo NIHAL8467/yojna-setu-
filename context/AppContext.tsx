@@ -27,6 +27,7 @@ interface AppContextType {
   setSelectedSchemeForPartners: (schemeId: string | null) => void;
   activeTab: 'home' | 'schemes' | 'calculator' | 'partners';
   setActiveTab: (tab: 'home' | 'schemes' | 'calculator' | 'partners') => void;
+  goBack: () => void;
   userCoords: { lat: number; lng: number } | null;
   setUserCoords: (coords: { lat: number; lng: number } | null) => void;
   // User Profile & Category Concession
@@ -54,7 +55,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
   const [selectedSchemeForCalculator, setSelectedSchemeForCalculator] = useState<Scheme | null>(null);
   const [selectedSchemeForPartners, setSelectedSchemeForPartners] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'home' | 'schemes' | 'calculator' | 'partners'>('home');
+  const [activeTab, setActiveTabState] = useState<'home' | 'schemes' | 'calculator' | 'partners'>('home');
+  const [tabHistory, setTabHistory] = useState<('home' | 'schemes' | 'calculator' | 'partners')[]>(['home']);
+
+  const setActiveTab = useCallback((tab: 'home' | 'schemes' | 'calculator' | 'partners') => {
+    setActiveTabState(tab);
+    setTabHistory((prev) => (prev[prev.length - 1] === tab ? prev : [...prev, tab]));
+  }, []);
+
+  const goBack = useCallback(() => {
+    setTabHistory((prev) => {
+      if (prev.length > 1) {
+        const next = [...prev];
+        next.pop(); // remove current active tab
+        const prevTab = next[next.length - 1] || 'home';
+        setActiveTabState(prevTab);
+        return next;
+      }
+      setActiveTabState('home');
+      return ['home'];
+    });
+  }, []);
+
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const [userProfile, setUserProfile] = useState<UserProfile>(() => {
@@ -135,6 +157,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setSelectedSchemeForPartners,
         activeTab,
         setActiveTab,
+        goBack,
         userCoords,
         setUserCoords,
         userProfile,

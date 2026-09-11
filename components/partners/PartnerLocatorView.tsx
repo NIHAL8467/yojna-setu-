@@ -21,16 +21,27 @@ import {
   CheckCircle2, 
   Sparkles,
   Compass,
-  X
+  X,
+  ArrowLeft
 } from 'lucide-react';
 
-// Dynamic import of LeafletMap to avoid SSR issues
+// Dynamic import of GooglePartnerMap and LeafletMap to avoid SSR issues
+const GooglePartnerMap = dynamic(() => import('./GooglePartnerMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[440px] sm:h-[480px] lg:h-[540px] bg-slate-100 rounded-2xl flex items-center justify-center text-xs text-slate-500 animate-pulse border border-slate-200">
+      <Compass className="w-6 h-6 animate-spin text-blue-900 mr-2" />
+      <span>Loading Google Maps (गूगल मैप्स)...</span>
+    </div>
+  ),
+});
+
 const LeafletMap = dynamic(() => import('./LeafletMap'), {
   ssr: false,
   loading: () => (
     <div className="w-full h-[440px] sm:h-[480px] lg:h-[540px] bg-slate-100 rounded-2xl flex items-center justify-center text-xs text-slate-500 animate-pulse border border-slate-200">
       <Compass className="w-6 h-6 animate-spin text-blue-900 mr-2" />
-      <span>Loading Interactive Partner Map...</span>
+      <span>Loading OpenStreetMap...</span>
     </div>
   ),
 });
@@ -44,7 +55,8 @@ export default function PartnerLocatorView() {
     userCoords, 
     setUserCoords,
     userProfile,
-    updateUserProfile
+    updateUserProfile,
+    goBack
   } = useApp();
   const allPartners = getAllPartners();
   const allSchemes = getAllSchemes();
@@ -52,6 +64,7 @@ export default function PartnerLocatorView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState<string>('ALL');
   const [selectedPartner, setSelectedPartner] = useState<ChannelPartner | null>(null);
+  const [mapEngine, setMapEngine] = useState<'google' | 'osm'>('google');
   const handleSelectPartner = React.useCallback((p: ChannelPartner) => {
     setSelectedPartner(p);
   }, [setSelectedPartner]);
@@ -156,6 +169,20 @@ export default function PartnerLocatorView() {
 
   return (
     <div id="partner-locator-view" className="max-w-6xl mx-auto space-y-6">
+      {/* Go Back Button */}
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <button
+          id="btn-partners-go-back"
+          type="button"
+          onClick={goBack}
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-700 bg-white hover:bg-slate-50 active:bg-slate-100 border border-slate-200 shadow-2xs transition-all hover:text-[#003366] hover:border-blue-300 cursor-pointer"
+          aria-label={locale === 'hi' ? 'पिछले पृष्ठ पर वापस जाएं' : 'Go back to previous page'}
+        >
+          <ArrowLeft className="w-4 h-4 text-[#003366]" />
+          <span>{locale === 'hi' ? 'वापस जाएं (Go Back)' : 'Go Back'}</span>
+        </button>
+      </div>
+
       {/* Header */}
       <div className="text-center space-y-2 mb-4">
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#0F294A] tracking-tight leading-tight">
@@ -515,22 +542,64 @@ export default function PartnerLocatorView() {
         {/* RIGHT: Interactive Map View (6 cols) */}
         <div className="lg:col-span-6 lg:sticky lg:top-24">
           <div className="bg-white rounded-2xl border border-slate-200 p-3 shadow-xs space-y-2">
-            <div className="flex items-center justify-between px-2 pt-1 gap-2 flex-wrap">
-              <span className="text-xs font-bold text-blue-950 uppercase tracking-wide flex items-center gap-1.5">
-                <Compass className="w-4 h-4 text-blue-900" />
-                Channel Partner Network Map
-              </span>
-              <span className="text-[11px] text-slate-500 font-medium">
-                Interactive Map View
-              </span>
+            <div className="flex items-center justify-between px-1 pt-0.5 gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-[#0F294A] uppercase tracking-wide flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-rose-600" />
+                  Channel Partner Network Map
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                  {mapEngine === 'google' ? 'Google Maps' : 'OpenStreetMap'}
+                </span>
+              </div>
+
+              {/* Map Engine Selector Tabs */}
+              <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200 text-xs">
+                <button
+                  id="btn-switch-map-google"
+                  type="button"
+                  onClick={() => setMapEngine('google')}
+                  className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    mapEngine === 'google'
+                      ? 'bg-white text-[#003366] shadow-xs border border-slate-200'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                  <span>Google Maps (गूगल मैप्स)</span>
+                </button>
+                <button
+                  id="btn-switch-map-osm"
+                  type="button"
+                  onClick={() => setMapEngine('osm')}
+                  className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    mapEngine === 'osm'
+                      ? 'bg-white text-[#003366] shadow-xs border border-slate-200'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                  <span>OpenStreetMap</span>
+                </button>
+              </div>
             </div>
             
-            <LeafletMap
-              partners={filteredPartners}
-              userCoords={userCoords}
-              selectedPartner={selectedPartner}
-              onSelectPartner={handleSelectPartner}
-            />
+            {mapEngine === 'google' ? (
+              <GooglePartnerMap
+                partners={filteredPartners}
+                userCoords={userCoords}
+                selectedPartner={selectedPartner}
+                onSelectPartner={handleSelectPartner}
+                onSwitchToOsm={() => setMapEngine('osm')}
+              />
+            ) : (
+              <LeafletMap
+                partners={filteredPartners}
+                userCoords={userCoords}
+                selectedPartner={selectedPartner}
+                onSelectPartner={handleSelectPartner}
+              />
+            )}
           </div>
         </div>
       </div>

@@ -12,11 +12,12 @@ import {
   Sparkles,
   Menu,
   X,
-  ChevronRight
+  ChevronRight,
+  ArrowLeft
 } from 'lucide-react';
 
 export default function Header() {
-  const { activeTab, setActiveTab, t, locale } = useApp();
+  const { activeTab, setActiveTab, goBack, t, locale } = useApp();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navItems = [
@@ -99,51 +100,61 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Route-Based Navigation Bar: Hidden on Home page, only active page pill on other pages */}
+      {/* Route-Based Navigation Bar: Hidden on Home page, provides Go Back navigation button + active tab breadcrumb */}
       {activeTab !== 'home' && (
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pb-2.5 sm:pb-3">
           <nav
             id="nav-main-pill-bar"
-            aria-label="Current Page Navigation"
-            className="flex items-center bg-[#F1F5F9] p-1 sm:p-1.5 rounded-xl sm:rounded-full border border-slate-200/90 shadow-2xs w-fit max-w-full"
+            aria-label="Current Page Navigation and Back"
+            className="flex items-center gap-2 bg-[#F1F5F9] p-1 sm:p-1.5 rounded-xl sm:rounded-full border border-slate-200/90 shadow-2xs w-fit max-w-full flex-wrap sm:flex-nowrap"
           >
+            {/* 1. "Go Back" Navigation Button */}
+            <button
+              id="btn-nav-go-back"
+              type="button"
+              onClick={goBack}
+              className="flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-full text-xs sm:text-sm font-bold text-slate-700 hover:text-[#003366] bg-white hover:bg-slate-50 active:bg-slate-100 border border-slate-300 hover:border-blue-400 shadow-2xs transition-all cursor-pointer group shrink-0"
+              aria-label={locale === 'hi' ? 'वापस जाएं (Go Back)' : 'Go Back'}
+            >
+              <ArrowLeft className="w-4 h-4 text-[#003366] transition-transform group-hover:-translate-x-0.5" />
+              <span>{locale === 'hi' ? 'वापस जाएं (Go Back)' : 'Go Back'}</span>
+            </button>
+
+            {/* Breadcrumb Separator */}
+            <span className="text-slate-400 text-xs px-0.5 select-none font-medium hidden xs:inline">/</span>
+
+            {/* Current Active Page Pill */}
             {activeTab === 'schemes' && (
-              <button
+              <div
                 id="nav-item-schemes"
-                type="button"
-                onClick={() => handleNavClick('schemes')}
                 aria-current="page"
-                className="flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-full text-xs font-bold bg-[#003366] text-white shadow-xs whitespace-nowrap cursor-pointer"
+                className="flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-full text-xs font-bold bg-[#003366] text-white shadow-xs whitespace-nowrap"
               >
                 <Compass className="w-3.5 h-3.5 shrink-0 text-amber-400" />
                 <span id="active-page-name-schemes">{locale === 'hi' ? 'स्मार्ट योजना चयन' : 'Smart Scheme Recommender'}</span>
-              </button>
+              </div>
             )}
 
             {activeTab === 'calculator' && (
-              <button
+              <div
                 id="nav-item-calculator"
-                type="button"
-                onClick={() => handleNavClick('calculator')}
                 aria-current="page"
-                className="flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-full text-xs font-bold bg-[#003366] text-white shadow-xs whitespace-nowrap cursor-pointer"
+                className="flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-full text-xs font-bold bg-[#003366] text-white shadow-xs whitespace-nowrap"
               >
                 <Calculator className="w-3.5 h-3.5 shrink-0 text-amber-400" />
                 <span id="active-page-name-calculator">{locale === 'hi' ? 'ईएमआई कैलकुलेटर' : 'EMI Calculator'}</span>
-              </button>
+              </div>
             )}
 
             {activeTab === 'partners' && (
-              <button
+              <div
                 id="nav-item-partners"
-                type="button"
-                onClick={() => handleNavClick('partners')}
                 aria-current="page"
-                className="flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-full text-xs font-bold bg-[#003366] text-white shadow-xs whitespace-nowrap cursor-pointer"
+                className="flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-full text-xs font-bold bg-[#003366] text-white shadow-xs whitespace-nowrap"
               >
                 <MapPin className="w-3.5 h-3.5 shrink-0 text-amber-400" />
                 <span id="active-page-name-partners">{locale === 'hi' ? 'चैनल पार्टनर' : 'Channel Partner'}</span>
-              </button>
+              </div>
             )}
           </nav>
         </div>

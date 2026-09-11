@@ -24,7 +24,8 @@ import {
   Info,
   Check,
   CheckCircle2,
-  Users
+  Users,
+  ArrowLeft
 } from 'lucide-react';
 
 export default function EmiCalculatorView() {
@@ -34,6 +35,7 @@ export default function EmiCalculatorView() {
     selectedSchemeForCalculator, 
     setSelectedSchemeForPartners, 
     setActiveTab,
+    goBack,
     userCategory,
     setUserCategory
   } = useApp();
@@ -111,6 +113,20 @@ export default function EmiCalculatorView() {
 
   return (
     <div id="emi-calculator-view" className="max-w-5xl mx-auto space-y-6">
+      {/* Go Back Button */}
+      <div className="flex items-center justify-between gap-3 pt-1">
+        <button
+          id="btn-calculator-go-back"
+          type="button"
+          onClick={goBack}
+          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold text-slate-700 bg-white hover:bg-slate-50 active:bg-slate-100 border border-slate-200 shadow-2xs transition-all hover:text-[#003366] hover:border-blue-300 cursor-pointer"
+          aria-label={locale === 'hi' ? 'पिछले पृष्ठ पर वापस जाएं' : 'Go back to previous page'}
+        >
+          <ArrowLeft className="w-4 h-4 text-[#003366]" />
+          <span>{locale === 'hi' ? 'वापस जाएं (Go Back)' : 'Go Back'}</span>
+        </button>
+      </div>
+
       {/* Header */}
       <div className="text-center space-y-2 mb-6">
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#0F294A] tracking-tight leading-tight">

@@ -6,7 +6,8 @@ import type {
   EducationLevel, 
   SocialCategory, 
   Gender, 
-  UserProfile 
+  UserProfile,
+  Scheme
 } from '@/types';
 import { matchSchemes } from '@/lib/rules-engine';
 import { getStandard2LEmi, CATEGORY_CONCESSIONS } from '@/lib/emi-calculator';
@@ -15,6 +16,7 @@ import { INDIAN_STATES } from '@/lib/constants';
 import StepIndicator from '@/components/ui/StepIndicator';
 import SchemeCard from './SchemeCard';
 import SchemeDetailsModal from './SchemeDetailsModal';
+import SchemeSearchBar from './SchemeSearchBar';
 import { 
   Store, 
   GraduationCap, 
@@ -42,12 +44,54 @@ import {
 } from 'lucide-react';
 
 export default function SchemeWizard() {
-  const { t, locale, userProfile, updateUserProfile, userCategory, setUserCategory } = useApp();
+  const { t, locale, userProfile, updateUserProfile, userCategory, setUserCategory, setActiveTab, goBack } = useApp();
   const [currentStep, setCurrentStep] = useState<number>(1);
+  const [targetScheme, setTargetScheme] = useState<Scheme | null>(null);
   const [selectedResultForModal, setSelectedResultForModal] = useState<SchemeMatchResult | null>(null);
   const [step1Errors, setStep1Errors] = useState<string[]>([]);
   const [step2Error, setStep2Error] = useState<string | null>(null);
   const [step3Error, setStep3Error] = useState<string | null>(null);
+
+  // FEATURE 1: Go Back Button Action (Returns to Home or previous step)
+  const handleGoBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep((prev) => prev - 1);
+      return;
+    }
+    // If on Step 1: user returns to previous view or Home page
+    goBack();
+  };
+
+  // FEATURE 3: Scheme Selection from search -> Demographic Details Form
+  const handleSelectSchemeFromSearch = (scheme: Scheme) => {
+    setTargetScheme(scheme);
+    setCurrentStep(1); // Open the existing demographic details page/form
+
+    // Automatically set relevant occupation context if the scheme is specific to a sector
+    if (scheme.id === 'educational_loan_scheme') {
+      updateUserProfile({ occupation: 'education' });
+    } else if (scheme.id === 'green_business_scheme') {
+      updateUserProfile({ occupation: 'green_energy' });
+    } else if (scheme.id === 'swachhta_udayami_yojana') {
+      updateUserProfile({ occupation: 'sanitation' });
+    } else if (scheme.id === 'mahila_samriddhi_yojana') {
+      updateUserProfile({ gender: 'female', occupation: 'business' });
+    } else if (scheme.category === 'business') {
+      if (!userProfile.occupation) {
+        updateUserProfile({ occupation: 'business' });
+      }
+    }
+
+    // Smooth scroll down to the demographic form
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        const demographicForm = document.getElementById('step-1-demographic-card');
+        if (demographicForm) {
+          demographicForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 80);
+    }
+  };
 
   // Project Type (Occupation) options
   const occupations = [
@@ -114,7 +158,7 @@ export default function SchemeWizard() {
 
   // AUTOMATIC DETERMINISTIC SCHEME MATCHING (useMemo: ZERO state updates, ZERO infinite loops)
   const matchResults: SchemeMatchResult[] = useMemo(() => {
-    return matchSchemes({
+    const rawResults = matchSchemes({
       projectType: userProfile.occupation || '',
       estimatedCost: userProfile.projectCost ?? 0,
       familyIncome: userProfile.income ?? 0,
@@ -125,7 +169,17 @@ export default function SchemeWizard() {
       gender: userProfile.gender,
       category: userProfile.category,
     });
-  }, [userProfile]);
+
+    if (targetScheme) {
+      const targetMatch = rawResults.find((r) => r.scheme.id === targetScheme.id);
+      const otherMatches = rawResults.filter((r) => r.scheme.id !== targetScheme.id);
+      if (targetMatch) {
+        return [targetMatch, ...otherMatches];
+      }
+    }
+
+    return rawResults;
+  }, [userProfile, targetScheme]);
 
   const eligibleCount = useMemo(() => {
     return matchResults.filter((r) => r.isEligible).length;
@@ -205,6 +259,7 @@ export default function SchemeWizard() {
       projectCost: null,
       educationLevel: '',
     });
+    setTargetScheme(null);
     setStep1Errors([]);
     setStep2Error(null);
     setStep3Error(null);
@@ -213,6 +268,23 @@ export default function SchemeWizard() {
 
   return (
     <div id="scheme-wizard-container" className="max-w-5xl mx-auto space-y-6">
+      {targetScheme && (
+        <div className="flex items-center justify-end gap-3 pt-1">
+          <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-900 px-3 py-1.5 rounded-full text-xs font-semibold">
+            <span className="text-slate-600 hidden sm:inline">{locale === 'hi' ? 'चयनित योजना:' : 'Target Scheme:'}</span>
+            <span className="font-bold text-[#003366] truncate max-w-[160px] sm:max-w-xs">{targetScheme.name}</span>
+            <button
+              type="button"
+              onClick={() => setTargetScheme(null)}
+              className="text-slate-400 hover:text-rose-600 ml-1 font-bold cursor-pointer"
+              title="Clear target scheme"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="text-center space-y-2 mb-2">
         <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#0F294A] tracking-tight leading-tight">
@@ -226,6 +298,13 @@ export default function SchemeWizard() {
             : 'Fill in your details step-by-step to calculate eligible central and state affirmative schemes with concessional EMIs.'}
         </p>
       </div>
+
+      {/* FEATURE 2: Direct Scheme Search Bar (Works independently without demographic details) */}
+      <SchemeSearchBar
+        onSelectScheme={handleSelectSchemeFromSearch}
+        selectedScheme={targetScheme}
+        locale={locale}
+      />
 
       {/* Reusable Step Indicator */}
       <StepIndicator
@@ -248,8 +327,45 @@ export default function SchemeWizard() {
       {/* ========================================================================= */}
       {currentStep === 1 && (
         <div id="step-1-container" className="space-y-6">
+          {/* FEATURE 3: Target Scheme Context Banner */}
+          {targetScheme && (
+            <div
+              id="target-scheme-context-banner"
+              className="bg-gradient-to-r from-[#003366] to-[#0F294A] text-white rounded-2xl p-4 sm:p-5 border border-blue-800/80 shadow-xs space-y-2.5 animate-in fade-in duration-200"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider bg-amber-400 text-blue-950">
+                    Target Scheme Context Active
+                  </span>
+                  <span className="text-xs text-blue-200 font-bold">
+                    {targetScheme.code}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTargetScheme(null)}
+                  className="text-xs text-blue-200 hover:text-white underline font-semibold cursor-pointer"
+                >
+                  {locale === 'hi' ? 'हटाएं (Clear)' : 'Change / Clear Scheme'}
+                </button>
+              </div>
+
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-white leading-tight">
+                  Checking Eligibility for: {locale === 'hi' && targetScheme.nameHi ? targetScheme.nameHi : targetScheme.name}
+                </h3>
+                <p className="text-xs text-blue-100 mt-1 leading-relaxed">
+                  {locale === 'hi'
+                    ? 'कृपया नीचे अपना राज्य, आयु, लिंग, आय और जाति वर्ग भरें — हम इस योजना के लिए आपकी सीधी पात्रता व ईएमआई की गणना करेंगे।'
+                    : 'Enter your demographic details below (State, Age, Gender, Income, and Caste Category) to check your eligibility for this selected scheme.'}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* A. DEMOGRAPHIC CONTROLS CARD: Age, State, District, Gender, Income, Cost */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-7 shadow-xs space-y-6">
+          <div id="step-1-demographic-card" className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-7 shadow-xs space-y-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                 <SlidersHorizontal className="w-4 h-4 text-blue-900" />
@@ -596,7 +712,17 @@ export default function SchemeWizard() {
             </div>
           )}
 
-          <div className="flex justify-end pt-2">
+          <div className="flex items-center justify-between pt-2">
+            <button
+              id="btn-step-1-back-home"
+              type="button"
+              onClick={handleGoBack}
+              className="px-5 py-3 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-2xs"
+            >
+              <ArrowLeft className="w-4 h-4 text-[#003366]" />
+              <span>{locale === 'hi' ? 'वापस जाएं (Go Back)' : 'Go Back to Home'}</span>
+            </button>
+
             <button
               id="btn-step-1-next"
               type="button"
@@ -780,15 +906,27 @@ export default function SchemeWizard() {
         <div id="step-4-container" className="space-y-6">
           {/* Navigation Bar to Modify or Reset */}
           <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
-            <button
-              id="btn-modify-criteria"
-              type="button"
-              onClick={() => setCurrentStep(1)}
-              className="px-4 py-2 border border-slate-300 bg-slate-50 hover:bg-slate-100 text-blue-950 font-bold text-xs rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Modify Criteria / Demographics (विवरण बदलें)</span>
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                id="btn-step-4-back-home"
+                type="button"
+                onClick={goBack}
+                className="px-3.5 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 text-[#003366]" />
+                <span>{locale === 'hi' ? 'वापस जाएं (Go Back)' : 'Back to Home'}</span>
+              </button>
+
+              <button
+                id="btn-modify-criteria"
+                type="button"
+                onClick={() => setCurrentStep(1)}
+                className="px-4 py-2 border border-slate-300 bg-slate-50 hover:bg-slate-100 text-blue-950 font-bold text-xs rounded-lg flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Modify Criteria / Demographics (विवरण बदलें)</span>
+              </button>
+            </div>
 
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-500 hidden sm:inline">
@@ -839,6 +977,27 @@ export default function SchemeWizard() {
               </div>
             </div>
           </div>
+
+          {/* Target Scheme Focused Callout */}
+          {targetScheme && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-amber-900">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-extrabold px-2.5 py-0.5 bg-[#003366] text-amber-300 rounded text-[11px] uppercase tracking-wider">
+                  Target Scheme: {targetScheme.code}
+                </span>
+                <span className="font-bold text-slate-900">
+                  {targetScheme.name}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTargetScheme(null)}
+                className="text-slate-600 hover:text-slate-900 underline font-semibold self-start sm:self-auto cursor-pointer"
+              >
+                Clear Target Focus
+              </button>
+            </div>
+          )}
 
           {/* 4. SCHEME RESULT CARDS LIST */}
           <div className="space-y-4">
