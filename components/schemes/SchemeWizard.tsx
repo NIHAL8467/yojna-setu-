@@ -644,16 +644,16 @@ export default function SchemeWizard() {
             </div>
           </div>
 
-          {/* B. MERGED SECTION: Social Category (Caste) — Concessional Subvention Benchmark */}
+          {/* B. MERGED SECTION: Social Category (Caste) */}
           <div className="bg-white rounded-2xl border border-blue-200 p-4 sm:p-5 shadow-xs space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
               <div>
                 <span className="text-xs font-bold text-blue-950 uppercase tracking-wider flex items-center gap-1.5">
                   <Users className="w-4 h-4 text-blue-800 shrink-0" />
-                  <span>2. Social Category (Caste) — Concessional Subvention Benchmark *</span>
+                  <span>2. Social Category (Caste) *</span>
                 </span>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Select your social category to calculate affirmative interest concessions:
+                  Select your social category to check affirmative scheme eligibility:
                 </p>
               </div>
               <span className="text-xs font-bold px-3 py-1 rounded-md bg-blue-50 text-blue-950 border border-blue-200 self-start sm:self-auto">
@@ -665,7 +665,6 @@ export default function SchemeWizard() {
             <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
               {categories.map((cat) => {
                 const isSelected = userProfile.category === cat;
-                const benchmark = getStandard2LEmi(cat);
                 const concession = CATEGORY_CONCESSIONS[cat];
                 return (
                   <button
@@ -677,37 +676,29 @@ export default function SchemeWizard() {
                       setUserCategory(cat);
                       if (step1Errors.length > 0) setStep1Errors([]);
                     }}
-                    className={`p-3 sm:p-3.5 rounded-xl border text-left transition-all cursor-pointer relative flex flex-col justify-between min-h-[90px] sm:min-h-[96px] ${
+                    className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative flex items-center justify-between min-h-[56px] ${
                       isSelected
                         ? 'border-blue-900 bg-blue-50/90 ring-2 ring-blue-900 shadow-xs'
                         : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
                     <div>
-                      <div className="flex items-center justify-between">
-                        <span className="font-extrabold text-xs text-blue-950 tracking-wide">
-                          {concession.label}
-                        </span>
-                        {isSelected && (
-                          <CheckCircle2 className="w-4 h-4 text-blue-900 shrink-0" />
-                        )}
-                      </div>
+                      <span className="font-extrabold text-xs sm:text-sm text-blue-950 tracking-wide block">
+                        {concession.label}
+                      </span>
                       <span className="text-[11px] text-slate-500 block mt-0.5">
-                        ₹2L Loan EMI:
+                        {cat === 'GENERAL'
+                          ? 'General Category'
+                          : cat === 'OBC'
+                          ? 'Backward Classes'
+                          : cat === 'SC'
+                          ? 'Scheduled Castes'
+                          : 'Scheduled Tribes'}
                       </span>
                     </div>
-
-                    <div className="mt-2 pt-2 border-t border-slate-100 flex items-baseline justify-between flex-wrap gap-1">
-                      <span className="text-base sm:text-lg font-black text-blue-950">
-                        ₹{benchmark.toLocaleString('en-IN')}
-                        <span className="text-[10px] font-normal text-slate-500">/mo</span>
-                      </span>
-                      {concession.monthlySubventionOn2L > 0 && (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                          -₹{concession.monthlySubventionOn2L}
-                        </span>
-                      )}
-                    </div>
+                    {isSelected && (
+                      <CheckCircle2 className="w-4 h-4 text-blue-900 shrink-0" />
+                    )}
                   </button>
                 );
               })}
