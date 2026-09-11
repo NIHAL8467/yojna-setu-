@@ -44,9 +44,21 @@ import {
 } from 'lucide-react';
 
 export default function SchemeWizard() {
-  const { t, locale, userProfile, updateUserProfile, userCategory, setUserCategory, setActiveTab, goBack } = useApp();
+  const { 
+    t, 
+    locale, 
+    userProfile, 
+    updateUserProfile, 
+    userCategory, 
+    setUserCategory, 
+    setActiveTab, 
+    goBack,
+    selectedTargetScheme,
+    setSelectedTargetScheme
+  } = useApp();
   const [currentStep, setCurrentStep] = useState<number>(1);
-  const [targetScheme, setTargetScheme] = useState<Scheme | null>(null);
+  const targetScheme = selectedTargetScheme;
+  const setTargetScheme = setSelectedTargetScheme;
   const [selectedResultForModal, setSelectedResultForModal] = useState<SchemeMatchResult | null>(null);
   const [step1Errors, setStep1Errors] = useState<string[]>([]);
   const [step2Error, setStep2Error] = useState<string | null>(null);
@@ -62,9 +74,14 @@ export default function SchemeWizard() {
     goBack();
   };
 
+  const handleClearTargetScheme = () => {
+    setTargetScheme(null);
+  };
+
   // FEATURE 3: Scheme Selection from search -> Demographic Details Form
   const handleSelectSchemeFromSearch = (scheme: Scheme) => {
     setTargetScheme(scheme);
+    setSelectedTargetScheme(scheme);
     setCurrentStep(1); // Open the existing demographic details page/form
 
     // Automatically set relevant occupation context if the scheme is specific to a sector
@@ -275,7 +292,7 @@ export default function SchemeWizard() {
             <span className="font-bold text-[#003366] truncate max-w-[160px] sm:max-w-xs">{targetScheme.name}</span>
             <button
               type="button"
-              onClick={() => setTargetScheme(null)}
+              onClick={handleClearTargetScheme}
               className="text-slate-400 hover:text-rose-600 ml-1 font-bold cursor-pointer"
               title="Clear target scheme"
             >
@@ -344,7 +361,7 @@ export default function SchemeWizard() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setTargetScheme(null)}
+                  onClick={handleClearTargetScheme}
                   className="text-xs text-blue-200 hover:text-white underline font-semibold cursor-pointer"
                 >
                   {locale === 'hi' ? 'हटाएं (Clear)' : 'Change / Clear Scheme'}
@@ -991,7 +1008,7 @@ export default function SchemeWizard() {
               </div>
               <button
                 type="button"
-                onClick={() => setTargetScheme(null)}
+                onClick={handleClearTargetScheme}
                 className="text-slate-600 hover:text-slate-900 underline font-semibold self-start sm:self-auto cursor-pointer"
               >
                 Clear Target Focus

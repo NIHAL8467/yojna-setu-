@@ -5,6 +5,7 @@ import { AppProvider, useApp } from '@/context/AppContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import HomeView from '@/components/home/HomeView';
+import AllAvailableSchemesView from '@/components/schemes/AllAvailableSchemesView';
 import SchemeWizard from '@/components/schemes/SchemeWizard';
 import EmiCalculatorView from '@/components/calculator/EmiCalculatorView';
 import PartnerLocatorView from '@/components/partners/PartnerLocatorView';
@@ -20,6 +21,7 @@ function AppContent() {
         
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           {activeTab === 'home' && <HomeView />}
+          {activeTab === 'explore-schemes' && <AllAvailableSchemesView />}
           {activeTab === 'schemes' && <SchemeWizard />}
           {activeTab === 'calculator' && <EmiCalculatorView />}
           {activeTab === 'partners' && <PartnerLocatorView />}

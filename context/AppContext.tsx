@@ -25,8 +25,10 @@ interface AppContextType {
   setSelectedSchemeForCalculator: (scheme: Scheme | null) => void;
   selectedSchemeForPartners: string | null;
   setSelectedSchemeForPartners: (schemeId: string | null) => void;
-  activeTab: 'home' | 'schemes' | 'calculator' | 'partners';
-  setActiveTab: (tab: 'home' | 'schemes' | 'calculator' | 'partners') => void;
+  activeTab: 'home' | 'schemes' | 'calculator' | 'partners' | 'explore-schemes';
+  setActiveTab: (tab: 'home' | 'schemes' | 'calculator' | 'partners' | 'explore-schemes') => void;
+  selectedTargetScheme: Scheme | null;
+  setSelectedTargetScheme: (scheme: Scheme | null) => void;
   goBack: () => void;
   userCoords: { lat: number; lng: number } | null;
   setUserCoords: (coords: { lat: number; lng: number } | null) => void;
@@ -55,10 +57,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
   const [selectedSchemeForCalculator, setSelectedSchemeForCalculator] = useState<Scheme | null>(null);
   const [selectedSchemeForPartners, setSelectedSchemeForPartners] = useState<string | null>(null);
-  const [activeTab, setActiveTabState] = useState<'home' | 'schemes' | 'calculator' | 'partners'>('home');
-  const [tabHistory, setTabHistory] = useState<('home' | 'schemes' | 'calculator' | 'partners')[]>(['home']);
+  const [selectedTargetScheme, setSelectedTargetScheme] = useState<Scheme | null>(null);
+  const [activeTab, setActiveTabState] = useState<'home' | 'schemes' | 'calculator' | 'partners' | 'explore-schemes'>('home');
+  const [tabHistory, setTabHistory] = useState<('home' | 'schemes' | 'calculator' | 'partners' | 'explore-schemes')[]>(['home']);
 
-  const setActiveTab = useCallback((tab: 'home' | 'schemes' | 'calculator' | 'partners') => {
+  const setActiveTab = useCallback((tab: 'home' | 'schemes' | 'calculator' | 'partners' | 'explore-schemes') => {
     setActiveTabState(tab);
     setTabHistory((prev) => (prev[prev.length - 1] === tab ? prev : [...prev, tab]));
   }, []);
@@ -155,6 +158,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setSelectedSchemeForCalculator,
         selectedSchemeForPartners,
         setSelectedSchemeForPartners,
+        selectedTargetScheme,
+        setSelectedTargetScheme,
         activeTab,
         setActiveTab,
         goBack,

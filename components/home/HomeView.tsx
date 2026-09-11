@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 export default function HomeView() {
-  const { locale, setActiveTab } = useApp();
+  const { locale, setActiveTab, setSelectedTargetScheme } = useApp();
 
   const quickServices = [
     {
@@ -64,7 +64,10 @@ export default function HomeView() {
               <button
                 id="btn-hero-find-scheme"
                 type="button"
-                onClick={() => setActiveTab('schemes')}
+                onClick={() => {
+                  setSelectedTargetScheme(null);
+                  setActiveTab('schemes');
+                }}
                 className="w-full sm:w-auto px-6 sm:px-7 py-3.5 rounded-xl bg-[#F97316] hover:bg-[#EA580C] text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all cursor-pointer min-h-[46px] inline-flex items-center justify-center text-center"
               >
                 {locale === 'hi' ? 'मेरी योजना खोजें' : 'Find My Scheme'}
@@ -73,7 +76,7 @@ export default function HomeView() {
               <button
                 id="btn-hero-explore-schemes"
                 type="button"
-                onClick={() => setActiveTab('schemes')}
+                onClick={() => setActiveTab('explore-schemes')}
                 className="w-full sm:w-auto px-6 sm:px-7 py-3.5 rounded-xl bg-[#003366] hover:bg-[#002244] text-white font-extrabold text-sm shadow-md hover:shadow-lg transition-all cursor-pointer min-h-[46px] inline-flex items-center justify-center text-center"
               >
                 {locale === 'hi' ? 'योजनाएं देखें' : 'Explore Schemes'}

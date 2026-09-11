@@ -13,7 +13,8 @@ import {
   Menu,
   X,
   ChevronRight,
-  ArrowLeft
+  ArrowLeft,
+  Layers
 } from 'lucide-react';
 
 export default function Header() {
@@ -47,7 +48,7 @@ export default function Header() {
     },
   ] as const;
 
-  const handleNavClick = (tabId: 'home' | 'schemes' | 'calculator' | 'partners') => {
+  const handleNavClick = (tabId: 'home' | 'schemes' | 'calculator' | 'partners' | 'explore-schemes') => {
     setActiveTab(tabId);
     setIsMobileMenuOpen(false);
   };
@@ -124,6 +125,17 @@ export default function Header() {
             <span className="text-slate-400 text-xs px-0.5 select-none font-medium hidden xs:inline">/</span>
 
             {/* Current Active Page Pill */}
+            {activeTab === 'explore-schemes' && (
+              <div
+                id="nav-item-explore-schemes"
+                aria-current="page"
+                className="flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-lg sm:rounded-full text-xs font-bold bg-[#003366] text-white shadow-xs whitespace-nowrap"
+              >
+                <Layers className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                <span id="active-page-name-explore-schemes">{locale === 'hi' ? 'सभी उपलब्ध योजनाएं' : 'All Available Schemes'}</span>
+              </div>
+            )}
+
             {activeTab === 'schemes' && (
               <div
                 id="nav-item-schemes"
