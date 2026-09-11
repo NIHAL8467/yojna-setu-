@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { useApp } from '@/context/AppContext';
-import { getAllPartners } from '@/lib/partners';
+import { getAllPartners, getPartnersForLocation } from '@/lib/partners';
 import { getAllSchemes } from '@/lib/schemes';
 import { sortPartnersByDistance, formatDistance } from '@/lib/geo-utils';
 import type { ChannelPartner } from '@/types';
@@ -22,7 +22,8 @@ import {
   Sparkles,
   Compass,
   X,
-  ArrowLeft
+  ArrowLeft,
+  LocateFixed
 } from 'lucide-react';
 
 // Dynamic import of GooglePartnerMap and LeafletMap to avoid SSR issues
@@ -58,7 +59,6 @@ export default function PartnerLocatorView() {
     updateUserProfile,
     goBack
   } = useApp();
-  const allPartners = getAllPartners();
   const allSchemes = getAllSchemes();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -70,8 +70,9 @@ export default function PartnerLocatorView() {
   }, [setSelectedPartner]);
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
+  const [detectedLocationName, setDetectedLocationName] = useState<string | null>(null);
 
-  // Handle Geolocation
+  // Handle Geolocation with Reverse Geocoding to match map position
   const handleUseMyLocation = () => {
     if (!navigator.geolocation) {
       setGeoError('Geolocation is not supported by your browser.');
@@ -82,14 +83,31 @@ export default function PartnerLocatorView() {
     setGeoError(null);
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const coords = {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         };
         setUserCoords(coords);
-        // Reset manual state/district text filters so the nearest banks to the GPS location are found
-        updateUserProfile({ state: '', district: '' });
+
+        // Fetch Reverse Geocoding to identify actual District and State for the coordinates
+        try {
+          const res = await fetch(`/api/geocode?lat=${coords.lat}&lng=${coords.lng}`);
+          if (res.ok) {
+            const geoData = await res.json();
+            if (geoData.state) {
+              const districtName = geoData.district || geoData.city || '';
+              updateUserProfile({
+                state: geoData.state,
+                district: districtName,
+              });
+              setDetectedLocationName(`${districtName ? `${districtName}, ` : ''}${geoData.state}`);
+            }
+          }
+        } catch (err) {
+          console.warn('Reverse geocoding error:', err);
+        }
+
         setGeoLoading(false);
       },
       (err) => {
@@ -98,23 +116,26 @@ export default function PartnerLocatorView() {
         setUserCoords(null);
         setGeoLoading(false);
       },
-      { timeout: 10000 }
+      { timeout: 10000, enableHighAccuracy: true }
     );
   };
 
+  // Base partners derived from user location / profile
+  const basePartners = useMemo(() => {
+    return getPartnersForLocation(userCoords, userProfile.district, userProfile.state);
+  }, [userCoords, userProfile.district, userProfile.state]);
+
   // Filter & Sort Partners
   const filteredPartners = useMemo(() => {
-    let list = [...allPartners];
+    let list = [...basePartners];
 
     // If GPS location is not set, apply manual state/district filters
     if (!userCoords) {
-      // 1. Exact State Filter (based on user profile / selection)
       if (userProfile.state && userProfile.state !== 'All India' && userProfile.state.trim() !== '') {
         const stateTarget = userProfile.state.trim().toLowerCase();
         list = list.filter((p) => p.state.toLowerCase() === stateTarget);
       }
 
-      // 2. Exact District Filter (based on user profile / input)
       if (userProfile.district && userProfile.district.trim() !== '') {
         const distTarget = userProfile.district.trim().toLowerCase();
         list = list.filter(
@@ -124,19 +145,9 @@ export default function PartnerLocatorView() {
             p.name.toLowerCase().includes(distTarget)
         );
       }
-    } else {
-      // When GPS location is active, if the user explicitly picks a state, filter by it;
-      // otherwise, all partners across India are available and sorted by proximity to the user!
-      if (userProfile.state && userProfile.state !== 'All India' && userProfile.state.trim() !== '') {
-        const stateTarget = userProfile.state.trim().toLowerCase();
-        const stateMatches = list.filter((p) => p.state.toLowerCase() === stateTarget);
-        if (stateMatches.length > 0) {
-          list = stateMatches;
-        }
-      }
     }
 
-    // 3. Search Query
+    // Search Query filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(
@@ -149,23 +160,31 @@ export default function PartnerLocatorView() {
       );
     }
 
-    // 4. Scheme Filter
+    // Scheme Filter
     if (selectedSchemeForPartners && selectedSchemeForPartners !== 'ALL') {
       list = list.filter((p) => p.schemesProcessed.includes(selectedSchemeForPartners));
     }
 
-    // 5. Partner Type Filter
+    // Partner Type Filter
     if (selectedType !== 'ALL') {
       list = list.filter((p) => p.type === selectedType);
     }
 
-    // 6. Distance Sorting if user location available
+    // Distance Sorting if user location available
     if (userCoords) {
       return sortPartnersByDistance(list, userCoords.lat, userCoords.lng);
     }
 
     return list;
-  }, [allPartners, userProfile.state, userProfile.district, searchQuery, selectedSchemeForPartners, selectedType, userCoords]);
+  }, [basePartners, userProfile.state, userProfile.district, searchQuery, selectedSchemeForPartners, selectedType, userCoords]);
+
+  // Derive effective active partner without cascading setState
+  const activeSelectedPartner = useMemo(() => {
+    if (selectedPartner && filteredPartners.some((p) => p.id === selectedPartner.id)) {
+      return selectedPartner;
+    }
+    return filteredPartners.length > 0 ? filteredPartners[0] : null;
+  }, [selectedPartner, filteredPartners]);
 
   return (
     <div id="partner-locator-view" className="max-w-6xl mx-auto space-y-6">
@@ -421,17 +440,41 @@ export default function PartnerLocatorView() {
       {/* Split View: Partner Cards (Left) and Leaflet Map (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT: Partner Cards List (6 cols) */}
-        <div className="lg:col-span-6 space-y-3.5 max-h-[700px] overflow-y-auto pr-1">
+        <div className="lg:col-span-6 space-y-3.5 max-h-[720px] overflow-y-auto pr-1">
+          {/* Active GPS Location Notice Banner */}
+          {userCoords && (
+            <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-950 flex items-center justify-between gap-2 shadow-2xs">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+                <span className="font-bold">
+                  📍 Showing branches sorted by distance to your map location
+                  {detectedLocationName ? ` (${detectedLocationName})` : ''}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setUserCoords(null);
+                  setDetectedLocationName(null);
+                }}
+                className="text-emerald-800 hover:text-emerald-950 text-[11px] underline font-bold cursor-pointer shrink-0"
+              >
+                Reset GPS
+              </button>
+            </div>
+          )}
+
           <div className="flex items-center justify-between text-xs text-slate-500 px-1">
             <span className="font-semibold text-slate-700">
               {filteredPartners.length} Partner Centers Found
             </span>
-            <span>Click any card to locate on map</span>
+            <span>Click any card to center and inspect on map</span>
           </div>
 
           {filteredPartners.length > 0 ? (
-            filteredPartners.map((partner) => {
-              const isSelected = selectedPartner?.id === partner.id;
+            filteredPartners.map((partner, index) => {
+              const isSelected = activeSelectedPartner?.id === partner.id;
+              const isClosest = Boolean(userCoords && index === 0);
               return (
                 <div
                   key={partner.id}
@@ -439,25 +482,39 @@ export default function PartnerLocatorView() {
                   onClick={() => setSelectedPartner(partner)}
                   className={`bg-white rounded-2xl border p-4 sm:p-5 transition-all cursor-pointer shadow-xs ${
                     isSelected
-                      ? 'border-blue-900 ring-2 ring-blue-900/10 bg-blue-50/40 shadow-sm'
+                      ? 'border-[#003366] ring-2 ring-[#003366] bg-blue-50/70 shadow-md'
                       : 'border-slate-200 hover:border-slate-300 hover:shadow-sm'
                   }`}
                 >
                   {/* Top line with Type & Distance */}
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span
-                      className={`px-2.5 py-0.5 text-[11px] font-bold rounded-md uppercase tracking-wide ${
-                        partner.type === 'SCA'
-                          ? 'bg-blue-900 text-white'
-                          : partner.type === 'Bank'
-                          ? 'bg-indigo-100 text-indigo-950 border border-indigo-200'
-                          : partner.type === 'RRB'
-                          ? 'bg-emerald-100 text-emerald-950 border border-emerald-200'
-                          : 'bg-purple-100 text-purple-950 border border-purple-200'
-                      }`}
-                    >
-                      {partner.typeName}
-                    </span>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span
+                        className={`px-2.5 py-0.5 text-[11px] font-bold rounded-md uppercase tracking-wide ${
+                          partner.type === 'SCA'
+                            ? 'bg-blue-900 text-white'
+                            : partner.type === 'Bank'
+                            ? 'bg-indigo-100 text-indigo-950 border border-indigo-200'
+                            : partner.type === 'RRB'
+                            ? 'bg-emerald-100 text-emerald-950 border border-emerald-200'
+                            : 'bg-purple-100 text-purple-950 border border-purple-200'
+                        }`}
+                      >
+                        {partner.typeName}
+                      </span>
+
+                      {isClosest && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-md">
+                          📍 Nearest to You
+                        </span>
+                      )}
+
+                      {isSelected && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#003366] bg-blue-100 border border-blue-200 px-2 py-0.5 rounded-md">
+                          ✓ On Map
+                        </span>
+                      )}
+                    </div>
 
                     {partner.distanceKm !== undefined && (
                       <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-950 bg-blue-100/70 px-2 py-0.5 rounded-full">
@@ -588,7 +645,7 @@ export default function PartnerLocatorView() {
               <GooglePartnerMap
                 partners={filteredPartners}
                 userCoords={userCoords}
-                selectedPartner={selectedPartner}
+                selectedPartner={activeSelectedPartner}
                 onSelectPartner={handleSelectPartner}
                 onSwitchToOsm={() => setMapEngine('osm')}
               />
@@ -596,7 +653,7 @@ export default function PartnerLocatorView() {
               <LeafletMap
                 partners={filteredPartners}
                 userCoords={userCoords}
-                selectedPartner={selectedPartner}
+                selectedPartner={activeSelectedPartner}
                 onSelectPartner={handleSelectPartner}
               />
             )}

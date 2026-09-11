@@ -9,6 +9,7 @@ import AllAvailableSchemesView from '@/components/schemes/AllAvailableSchemesVie
 import SchemeWizard from '@/components/schemes/SchemeWizard';
 import EmiCalculatorView from '@/components/calculator/EmiCalculatorView';
 import PartnerLocatorView from '@/components/partners/PartnerLocatorView';
+import { FloatingYojnaMitra } from '@/components/chatbot/FloatingYojnaMitra';
 
 function AppContent() {
   const { activeTab } = useApp();
@@ -28,6 +29,7 @@ function AppContent() {
       </div>
 
       <Footer />
+      <FloatingYojnaMitra />
     </div>
   );
 }

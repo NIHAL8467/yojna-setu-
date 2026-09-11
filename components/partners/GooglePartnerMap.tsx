@@ -96,10 +96,12 @@ export default function GooglePartnerMap({
   const [embedType, setEmbedType] = useState<'m' | 'k'>('m'); // 'm' = Roadmap, 'k' = Satellite
 
   if (!apiKey) {
-    const query = activeFallbackPartner
-      ? `${activeFallbackPartner.name}, ${activeFallbackPartner.address}`
+    const query = selectedPartner
+      ? `${selectedPartner.name}, ${selectedPartner.address}`
       : userCoords
       ? `${userCoords.lat},${userCoords.lng}`
+      : activeFallbackPartner
+      ? `${activeFallbackPartner.name}, ${activeFallbackPartner.address}`
       : 'State Channelising Agency Bank India';
 
     const embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=${embedType}&z=${embedZoom}&ie=UTF8&iwloc=&output=embed`;
@@ -120,7 +122,13 @@ export default function GooglePartnerMap({
                 </span>
               </div>
               <p className="text-[10px] text-slate-300 truncate max-w-[220px] sm:max-w-xs">
-                {activeFallbackPartner ? activeFallbackPartner.name : 'Viewing Pan-India Network'}
+                {selectedPartner
+                  ? `${selectedPartner.name} (${selectedPartner.district})`
+                  : userCoords
+                  ? `📍 GPS Location (${userCoords.lat.toFixed(4)}, ${userCoords.lng.toFixed(4)})`
+                  : activeFallbackPartner
+                  ? activeFallbackPartner.name
+                  : 'Viewing Pan-India Network'}
               </p>
             </div>
           </div>
