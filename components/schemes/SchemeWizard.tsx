@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { 
   SchemeMatchResult, 
   EducationLevel, 
@@ -63,6 +63,31 @@ export default function SchemeWizard() {
   const [step1Errors, setStep1Errors] = useState<string[]>([]);
   const [step2Error, setStep2Error] = useState<string | null>(null);
   const [step3Error, setStep3Error] = useState<string | null>(null);
+
+  // Helper function to scroll viewport to absolute top (0, 0)
+  const scrollToTop = () => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      if (document.documentElement) document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+    }
+  };
+
+  // Scroll viewport to top (0, 0) whenever the step changes
+  useEffect(() => {
+    scrollToTop();
+    const rafId = requestAnimationFrame(() => {
+      scrollToTop();
+    });
+    const timerId = setTimeout(() => {
+      scrollToTop();
+    }, 40);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(timerId);
+    };
+  }, [currentStep]);
 
   // FEATURE 1: Go Back Button Action (Returns to Home or previous step)
   const handleGoBack = () => {
@@ -234,6 +259,7 @@ export default function SchemeWizard() {
 
     setStep1Errors([]);
     setCurrentStep(2);
+    scrollToTop();
   };
 
   // Step 2 Validation & Proceed
@@ -248,6 +274,7 @@ export default function SchemeWizard() {
     }
     setStep2Error(null);
     setCurrentStep(3);
+    scrollToTop();
   };
 
   // Step 3 Validation & Proceed to Results
@@ -262,6 +289,7 @@ export default function SchemeWizard() {
     }
     setStep3Error(null);
     setCurrentStep(4);
+    scrollToTop();
   };
 
   const handleResetProfile = () => {

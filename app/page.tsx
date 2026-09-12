@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { AppProvider, useApp } from '@/context/AppContext';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
@@ -13,6 +13,14 @@ import { FloatingYojnaMitra } from '@/components/chatbot/FloatingYojnaMitra';
 
 function AppContent() {
   const { activeTab } = useApp();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      if (document.documentElement) document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+    }
+  }, [activeTab]);
 
   return (
     <div className="min-h-screen bg-slate-100/70 flex flex-col justify-between text-slate-800 antialiased selection:bg-amber-500 selection:text-blue-950 font-sans">
