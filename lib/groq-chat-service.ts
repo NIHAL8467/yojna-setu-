@@ -120,9 +120,14 @@ export async function sendGroqChat(req: GroqChatRequest): Promise<GroqChatResult
     };
   }
 
-  const configuredModel = process.env.GROQ_MODEL?.trim() || 'llama-3.3-70b-versatile';
-  // If primary model encounters an issue, fallback to high-availability instant model
-  const candidateModels = [configuredModel, 'llama-3.1-8b-instant'];
+  const configuredModel = process.env.GROQ_MODEL?.trim();
+  // Honor GROQ_MODEL first (defaulting to llama-3.3-70b-versatile); if the account doesn't have access or model is not found, fallback to supported Groq models
+  const candidateModels: string[] = [
+    configuredModel || 'llama-3.3-70b-versatile',
+    'openai/gpt-oss-120b',
+    'qwen/qwen3.8-27b',
+    'openai/gpt-oss-20b',
+  ].filter((m, i, arr) => arr.indexOf(m) === i);
 
   // Normalize conversation history for Groq messages array
   const groqMessages: GroqChatMessage[] = [
@@ -217,7 +222,6 @@ export async function sendGroqChat(req: GroqChatRequest): Promise<GroqChatResult
           .slice(0, 150);
 
         lastError = `Groq API returned HTTP ${response.status} (${contentType || 'non-JSON'}): ${cleanSnippet || 'Service unavailable'}`;
-        // If it's a 5xx gateway error or model not found, try next candidate model
         if (response.status >= 500 || response.status === 404) {
           continue;
         }
@@ -231,8 +235,16 @@ export async function sendGroqChat(req: GroqChatRequest): Promise<GroqChatResult
         const errorMsg = data?.error?.message || `Groq API error (status ${response.status})`;
         lastError = errorMsg;
 
-        // If model decommissioned or not found, try fallback candidate model
-        if (response.status === 404 || errorMsg.toLowerCase().includes('model') || errorMsg.toLowerCase().includes('decommissioned')) {
+        // If model does not exist, decommissioned, or unauthorized on this key, try next candidate
+        const lowerErr = errorMsg.toLowerCase();
+        if (
+          response.status === 404 ||
+          lowerErr.includes('does not exist') ||
+          lowerErr.includes('do not have access') ||
+          lowerErr.includes('decommissioned') ||
+          lowerErr.includes('model')
+        ) {
+          console.warn(`Groq model ${model} not available (${errorMsg}), trying next supported model...`);
           continue;
         }
 

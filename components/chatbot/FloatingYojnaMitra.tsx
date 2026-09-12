@@ -290,6 +290,7 @@ export function FloatingYojnaMitra() {
       const newMsgId = `assistant-${assistantMsgId}`;
 
       const replyText =
+        data.response ||
         data.reply ||
         (locale === 'hi'
           ? 'योजना सेतु सहायक से संपर्क नहीं हो पाया। कृपया पुनः प्रयास करें।'
