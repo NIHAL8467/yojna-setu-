@@ -207,24 +207,19 @@ export default function SchemeCard({ result, onViewDetails }: SchemeCardProps) {
             <span>{t('common.viewDetails')}</span>
           </button>
 
-          <div className="flex flex-col xs:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center justify-end w-full sm:w-auto">
             <button
               type="button"
               onClick={handleCalculateEmi}
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors min-h-[44px] cursor-pointer"
+              style={scheme.id === 'mahila_samriddhi_yojana' ? { backgroundColor: '#5960f4' } : undefined}
+              className={`w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-colors min-h-[44px] cursor-pointer ${
+                scheme.id === 'mahila_samriddhi_yojana'
+                  ? 'text-white hover:opacity-90'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
+              }`}
             >
-              <Calculator className="w-4 h-4 text-blue-900" />
+              <Calculator className={`w-4 h-4 ${scheme.id === 'mahila_samriddhi_yojana' ? 'text-white' : 'text-blue-900'}`} />
               <span>{t('common.calculateEmi')}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleFindPartners}
-              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-blue-900 hover:bg-blue-950 text-white shadow-xs transition-colors min-h-[44px] cursor-pointer text-center"
-            >
-              <MapPin className="w-4 h-4 text-amber-400 shrink-0" />
-              <span>{t('common.findNearbyPartners')}</span>
-              <ArrowRight className="w-3.5 h-3.5 shrink-0" />
             </button>
           </div>
         </div>
