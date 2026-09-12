@@ -3,6 +3,12 @@ import schemesData from '@/data/schemes.json';
 import partnersData from '@/data/partners.json';
 import { matchSchemes } from '@/lib/rules-engine';
 import { calculateEmiSchedule } from '@/lib/emi-calculator';
+import {
+  VERIFIED_SCHEMES_REGISTRY,
+  findVerifiedScheme,
+  searchVerifiedSchemesByTopic,
+  VerifiedSchemeInfo,
+} from '@/lib/national-schemes-data';
 import type { Scheme, ChannelPartner, EducationLevel, ApplicantCategory, SchemeFilterInput } from '@/types';
 
 export interface UserProfileContext {
@@ -44,26 +50,31 @@ export interface AssistantChatResponse {
 }
 
 // -------------------------------------------------------------
-// Tool Definitions for @google/genai
+// Tool Declarations for @google/genai
 // -------------------------------------------------------------
 const toolDeclarations: FunctionDeclaration[] = [
   {
     name: 'get_all_schemes',
-    description: 'Retrieve the complete verified list of all official NSFDC government concessional loan schemes available in Yojna Setu, with summaries of interest rates, loan limits, and target groups.',
+    description: 'Retrieve verified government schemes available on Yojna Setu (including NSFDC concessional loans and major national welfare schemes like PM-KISAN, PM-JAY, Mudra, PMAY).',
     parameters: {
       type: Type.OBJECT,
-      properties: {},
+      properties: {
+        category: {
+          type: Type.STRING,
+          description: "Optional category filter: 'business', 'agriculture', 'education', 'women', 'health', 'housing', 'sanitation', 'artisan'",
+        },
+      },
     },
   },
   {
     name: 'get_scheme_details',
-    description: 'Get verified details of a specific scheme by ID or code (e.g. MCF, TLS, ELS, MSY, GBS, SUY), including exact interest rates, women rebate, loan limits, moratorium, tenure, and required documents.',
+    description: 'Get verified factual details of a specific scheme (e.g., PM-KISAN, PM-JAY, PMAY, PMMY, PM SVANidhi, PM Vishwakarma, MCF, TLS, ELS, MSY, GBS, SUY, Sukanya Samriddhi).',
     parameters: {
       type: Type.OBJECT,
       properties: {
         schemeIdOrCode: {
           type: Type.STRING,
-          description: "Scheme ID or code, such as 'MCF', 'TLS', 'ELS', 'MSY', 'GBS', 'SUY', 'micro_credit_finance', 'term_loan_scheme', 'educational_loan_scheme', 'mahila_samriddhi_yojana', 'green_business_scheme', 'swachhta_udayami_yojana'.",
+          description: "Name, ID, or acronym of the scheme (e.g. 'PM-KISAN', 'Ayushman Bharat', 'Mudra', 'PMAY', 'PM SVANidhi', 'PM Vishwakarma', 'MCF', 'MSY', 'ELS', 'GBS', 'TLS', 'SUY').",
         },
       },
       required: ['schemeIdOrCode'],
@@ -71,46 +82,35 @@ const toolDeclarations: FunctionDeclaration[] = [
   },
   {
     name: 'search_schemes',
-    description: 'Search and filter official government loan schemes based on business/activity type, project cost, target group (women, sanitation worker, student, artisan), or keyword.',
+    description: 'Search government schemes by topic, target group (farmers, students, women, artisans, street vendors), or activity.',
     parameters: {
       type: Type.OBJECT,
       properties: {
-        category: {
+        targetGroupOrKeyword: {
           type: Type.STRING,
-          description: "Category: 'business', 'education', 'transport', 'green_energy', 'sanitation', 'artisan', 'retail', 'services', 'agriculture', 'manufacturing'",
-        },
-        estimatedCost: {
-          type: Type.NUMBER,
-          description: 'Estimated total project cost or loan amount in INR',
-        },
-        applicantCategory: {
-          type: Type.STRING,
-          description: "'male', 'female', 'shg', or 'safai_karamchari'",
-        },
-        keyword: {
-          type: Type.STRING,
-          description: "Search keywords like 'e-rickshaw', 'solar', 'tailoring', 'study', 'cleaning', 'mechanized', 'shop'",
+          description: "Search keywords, target group, or activity (e.g. 'farmers', 'women', 'students', 'scholarship', 'e-rickshaw', 'street vendor', 'artisan', 'health')",
         },
       },
+      required: ['targetGroupOrKeyword'],
     },
   },
   {
     name: 'check_scheme_eligibility',
-    description: 'Run Yojna Setu deterministic rules engine to evaluate applicant eligibility, match score (0-100), calculated loan limits, specific match reasons, and official warnings.',
+    description: 'Evaluate user eligibility and match score for NSFDC concessional loan schemes based on demographic inputs.',
     parameters: {
       type: Type.OBJECT,
       properties: {
         familyIncome: {
           type: Type.NUMBER,
-          description: 'Annual family income in INR (NSFDC eligibility ceiling is ₹5,00,000 p.a.)',
+          description: 'Annual family income in INR (Ceiling: ₹5,00,000 p.a.)',
         },
         projectType: {
           type: Type.STRING,
-          description: "Activity sector ('business', 'education', 'transport', 'green_energy', 'sanitation', 'artisan', 'retail', 'services', 'agriculture', 'manufacturing')",
+          description: "Activity sector: 'business', 'education', 'transport', 'green_energy', 'sanitation', 'artisan', 'retail', 'services', 'agriculture'",
         },
         estimatedCost: {
           type: Type.NUMBER,
-          description: 'Total estimated project cost in INR',
+          description: 'Total estimated project or loan cost in INR',
         },
         applicantCategory: {
           type: Type.STRING,
@@ -126,7 +126,7 @@ const toolDeclarations: FunctionDeclaration[] = [
   },
   {
     name: 'calculate_loan_emi',
-    description: 'Calculate reducing-balance monthly EMI installment, total interest, and total repayment using the official NSFDC reducing balance formula, including optional moratorium grace period.',
+    description: 'Calculate official reducing-balance monthly EMI installment and repayment schedule for concessional loans.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -136,15 +136,15 @@ const toolDeclarations: FunctionDeclaration[] = [
         },
         annualInterestRatePercent: {
           type: Type.NUMBER,
-          description: 'Annual interest rate percent (e.g. 4.0, 5.0, 6.0, 6.5)',
+          description: 'Annual interest rate percent (e.g. 4.0, 5.0, 6.0)',
         },
         totalTenureMonths: {
           type: Type.INTEGER,
-          description: 'Total tenure in months (e.g. 36 for 3 yrs, 60 for 5 yrs, 120 for 10 yrs)',
+          description: 'Total tenure in months (e.g. 36, 60)',
         },
         moratoriumMonths: {
           type: Type.INTEGER,
-          description: 'Moratorium / gestation period in months where principal repayment is deferred (e.g. 3, 6, 12)',
+          description: 'Moratorium / gestation period in months where principal repayment is deferred',
         },
       },
       required: ['principal', 'annualInterestRatePercent', 'totalTenureMonths'],
@@ -164,21 +164,13 @@ const toolDeclarations: FunctionDeclaration[] = [
           type: Type.STRING,
           description: 'District or city name',
         },
-        schemeId: {
-          type: Type.STRING,
-          description: 'Optional scheme ID to check if supported by the partner',
-        },
-        partnerType: {
-          type: Type.STRING,
-          description: "Optional partner type: 'SCA', 'Bank', 'RRB', or 'NBFC-MFI'",
-        },
       },
     },
   },
 ];
 
 // -------------------------------------------------------------
-// Tool Implementations (Deterministic Grounding Data)
+// Tool Execution Engine
 // -------------------------------------------------------------
 function executeTool(name: string, args: Record<string, any>): any {
   const schemes = schemesData as Scheme[];
@@ -186,27 +178,66 @@ function executeTool(name: string, args: Record<string, any>): any {
 
   switch (name) {
     case 'get_all_schemes': {
-      return schemes.map((s) => ({
+      const cat = (args.category || '').toLowerCase();
+      const nsfdcList = schemes.map((s) => ({
         id: s.id,
         code: s.code,
         name: s.name,
         nameHi: s.nameHi,
         category: s.category,
-        description: s.description,
         maxLoanAmount: `Up to ₹${s.terms.maxLoanAmountNumeric.toLocaleString('en-IN')}`,
-        maxLoanAmountNumeric: s.terms.maxLoanAmountNumeric,
         interestRate: `${s.terms.interestRatePercentNumeric}% p.a.`,
-        interestRateNumeric: s.terms.interestRatePercentNumeric,
-        womenRebate: s.terms.interestRebateWomenPercent > 0 ? `${s.terms.interestRebateWomenPercent}% p.a. rebate` : 'None (Already concessional)',
-        maxTenureMonths: s.terms.maxTenureMonthsNumeric,
-        moratoriumMonths: s.terms.moratoriumMonthsNumeric,
-        maxFamilyIncome: `₹${s.eligibility.maxFamilyIncome.toLocaleString('en-IN')} p.a.`,
         targetAudience: s.targetAudience,
       }));
+
+      const nationalList = VERIFIED_SCHEMES_REGISTRY.map((s) => ({
+        id: s.id,
+        code: s.code,
+        name: s.name,
+        nameHi: s.nameHi,
+        category: s.category,
+        targetGroup: s.targetGroup,
+        benefit: s.financialBenefit,
+      }));
+
+      if (cat) {
+        return [
+          ...nsfdcList.filter((s) => s.category.toLowerCase().includes(cat)),
+          ...nationalList.filter((s) => s.category.toLowerCase().includes(cat)),
+        ];
+      }
+
+      return { nsfdcSchemes: nsfdcList, nationalWelfareSchemes: nationalList };
     }
 
     case 'get_scheme_details': {
       const query = (args.schemeIdOrCode || '').toString().toLowerCase().trim();
+
+      // Check National Schemes registry first
+      const natScheme = findVerifiedScheme(query);
+      if (natScheme) {
+        return {
+          id: natScheme.id,
+          code: natScheme.code,
+          name: natScheme.name,
+          nameHi: natScheme.nameHi,
+          category: natScheme.category,
+          targetGroup: natScheme.targetGroup,
+          definition: natScheme.definition,
+          definitionHi: natScheme.definitionHi,
+          eligibility: natScheme.eligibility,
+          eligibilityHi: natScheme.eligibilityHi,
+          financialBenefit: natScheme.financialBenefit,
+          financialBenefitHi: natScheme.financialBenefitHi,
+          requiredDocuments: natScheme.requiredDocuments,
+          requiredDocumentsHi: natScheme.requiredDocumentsHi,
+          howToApply: natScheme.howToApply,
+          howToApplyHi: natScheme.howToApplyHi,
+          officialPortal: natScheme.officialPortal,
+        };
+      }
+
+      // Check NSFDC schemesData
       const found = schemes.find(
         (s) =>
           s.id.toLowerCase() === query ||
@@ -215,92 +246,67 @@ function executeTool(name: string, args: Record<string, any>): any {
           s.nameHi.toLowerCase().includes(query)
       );
 
-      if (!found) {
+      if (found) {
         return {
-          error: `No verified scheme found matching '${args.schemeIdOrCode}'. Available schemes: MCF, TLS, ELS, MSY, GBS, SUY.`,
+          id: found.id,
+          code: found.code,
+          name: found.name,
+          nameHi: found.nameHi,
+          category: found.category,
+          definition: found.description,
+          definitionHi: found.descriptionHi,
+          targetGroup: found.targetAudience,
+          eligibility: [
+            `Annual family income must be ≤ ₹${found.eligibility.maxFamilyIncome.toLocaleString('en-IN')} p.a.`,
+            `Age between ${found.eligibility.minAge || 18} and ${found.eligibility.maxAge || 65} years.`,
+            `Must belong to Scheduled Caste (SC) or specified target community.`,
+            `Activity: ${found.eligibility.projectTypes.join(', ')}.`,
+          ],
+          financialBenefit: `Loan assistance up to ₹${found.terms.maxLoanAmountNumeric.toLocaleString('en-IN')} at ${found.terms.interestRatePercentNumeric}% p.a. interest (Women get 0.5% p.a. rebate).`,
+          requiredDocuments: found.requiredDocuments,
+          howToApply: 'Submit application with project proposal and caste certificate to your State Channelising Agency (SCA) at District Vikas Bhawan or designated Public Sector Bank.',
+          terms: {
+            maxLoan: found.terms.maxLoanAmountNumeric,
+            interestRate: found.terms.interestRatePercentNumeric,
+            tenureMonths: found.terms.maxTenureMonthsNumeric,
+            moratoriumMonths: found.terms.moratoriumMonthsNumeric,
+          },
         };
       }
 
       return {
-        id: found.id,
-        code: found.code,
-        name: found.name,
-        nameHi: found.nameHi,
-        category: found.category,
-        description: found.description,
-        descriptionHi: found.descriptionHi,
-        targetAudience: found.targetAudience,
-        targetAudienceHi: found.targetAudienceHi,
-        eligibility: {
-          maxFamilyIncome: `₹${found.eligibility.maxFamilyIncome.toLocaleString('en-IN')} p.a.`,
-          minAge: found.eligibility.minAge,
-          maxAge: found.eligibility.maxAge,
-          projectTypes: found.eligibility.projectTypes,
-          educationRequired: found.eligibility.educationRequired || 'None',
-          specialFocus: found.eligibility.specialFocus || [],
-        },
-        terms: {
-          maxLoanAmount: `Up to ₹${found.terms.maxLoanAmountNumeric.toLocaleString('en-IN')}`,
-          maxLoanAmountNumeric: found.terms.maxLoanAmountNumeric,
-          interestRate: `${found.terms.interestRatePercentNumeric}% p.a.`,
-          interestRateNumeric: found.terms.interestRatePercentNumeric,
-          womenInterestRebate: found.terms.interestRebateWomenPercent > 0 ? `${found.terms.interestRebateWomenPercent}% rebate (Effective: ${found.terms.interestRatePercentNumeric - found.terms.interestRebateWomenPercent}% p.a.)` : '0%',
-          maxTenureMonths: found.terms.maxTenureMonthsNumeric,
-          moratoriumMonths: found.terms.moratoriumMonthsNumeric,
-          nsfdcSharePercent: `${found.terms.nsfdcSharePercentNumeric}%`,
-          promoterSharePercent: `${found.terms.promoterSharePercent}%`,
-          scaSharePercent: `${found.terms.scaSharePercent}%`,
-        },
-        requiredDocuments: found.requiredDocuments,
-        highlights: found.highlights,
+        error: `Scheme '${args.schemeIdOrCode}' was not found in Yojna Setu's verified database. Available verified schemes include: PM-KISAN, PM-JAY (Ayushman Bharat), PMAY, PM Mudra, PM SVANidhi, PM Vishwakarma, Sukanya Samriddhi, Post-Matric Scholarship, MCF, TLS, ELS, MSY, GBS, SUY.`,
       };
     }
 
     case 'search_schemes': {
-      const { category, estimatedCost, applicantCategory, keyword } = args;
-      const kw = (keyword || '').toLowerCase();
+      const kw = (args.targetGroupOrKeyword || '').toLowerCase().trim();
+      const matchedNat = searchVerifiedSchemesByTopic(kw);
+      const matchedNsfdc = schemes.filter(
+        (s) =>
+          s.name.toLowerCase().includes(kw) ||
+          s.category.toLowerCase().includes(kw) ||
+          s.targetAudience.toLowerCase().includes(kw) ||
+          s.eligibility.projectTypes.some((t) => t.includes(kw)) ||
+          (s.eligibility.specialFocus || []).some((f) => f.includes(kw))
+      );
 
-      let matched = schemes.filter((s) => {
-        if (category && category !== 'all') {
-          const directMatch = s.category === category || s.eligibility.projectTypes.includes(category);
-          const generalMatch = (category === 'business' || category === 'retail' || category === 'artisan') && s.eligibility.projectTypes.includes('business');
-          if (!directMatch && !generalMatch) return false;
-        }
-
-        if (applicantCategory === 'female' && s.id === 'mahila_samriddhi_yojana') {
-          return true;
-        }
-        if (applicantCategory === 'male' && s.id === 'mahila_samriddhi_yojana') {
-          return false;
-        }
-        if (applicantCategory === 'safai_karamchari' && s.id === 'swachhta_udayami_yojana') {
-          return true;
-        }
-
-        if (kw) {
-          const inName = s.name.toLowerCase().includes(kw) || s.nameHi.toLowerCase().includes(kw);
-          const inDesc = s.description.toLowerCase().includes(kw);
-          const inTypes = s.eligibility.projectTypes.some((t) => t.includes(kw));
-          const inFocus = (s.eligibility.specialFocus || []).some((f) => f.includes(kw));
-          if (!inName && !inDesc && !inTypes && !inFocus) return false;
-        }
-
-        return true;
-      });
-
-      if (matched.length === 0) {
-        matched = schemes; // Fallback to all schemes
-      }
-
-      return matched.map((s) => ({
-        id: s.id,
-        code: s.code,
-        name: s.name,
-        nameHi: s.nameHi,
-        maxLoanAmount: `₹${s.terms.maxLoanAmountNumeric.toLocaleString('en-IN')}`,
-        interestRate: `${s.terms.interestRatePercentNumeric}% p.a.`,
-        keyBenefit: s.highlights[0] || s.description,
-      }));
+      return [
+        ...matchedNat.map((s) => ({
+          code: s.code,
+          name: s.name,
+          category: s.category,
+          targetGroup: s.targetGroup,
+          summary: s.definition,
+        })),
+        ...matchedNsfdc.map((s) => ({
+          code: s.code,
+          name: s.name,
+          category: s.category,
+          targetGroup: s.targetAudience,
+          summary: s.description,
+        })),
+      ];
     }
 
     case 'check_scheme_eligibility': {
@@ -348,32 +354,24 @@ function executeTool(name: string, args: Record<string, any>): any {
     case 'search_channel_partners': {
       const stateQuery = (args.state || '').toLowerCase().trim();
       const districtQuery = (args.district || '').toLowerCase().trim();
-      const schemeQuery = (args.schemeId || '').toLowerCase().trim();
-      const typeQuery = (args.partnerType || '').toUpperCase().trim();
 
       const filtered = partners.filter((p) => {
         if (stateQuery && !p.state.toLowerCase().includes(stateQuery)) return false;
         if (districtQuery && !p.district.toLowerCase().includes(districtQuery) && !p.address.toLowerCase().includes(districtQuery)) return false;
-        if (typeQuery && p.type !== typeQuery) return false;
-        if (schemeQuery && !p.schemesProcessed.some((s) => s.toLowerCase().includes(schemeQuery))) return false;
         return true;
       });
 
       const list = filtered.length > 0 ? filtered : partners.slice(0, 4);
-
       return list.map((p) => ({
         id: p.id,
         name: p.name,
-        nameHi: p.nameHi,
         type: p.type,
-        typeName: p.typeName,
         state: p.state,
         district: p.district,
         address: p.address,
         phone: p.phone,
         email: p.email,
         workingHours: p.workingHours,
-        schemesProcessed: p.schemesProcessed,
       }));
     }
 
@@ -383,150 +381,542 @@ function executeTool(name: string, args: Record<string, any>): any {
 }
 
 // -------------------------------------------------------------
-// System Prompt
+// System Prompt for Yojna Setu Assistant
 // -------------------------------------------------------------
-const SYSTEM_PROMPT = `You are "Yojna Setu Assistant", the official AI Scheme Guidance Assistant for the National Scheduled Castes Finance and Development Corporation (NSFDC), Ministry of Social Justice and Empowerment (MoSJE), Government of India.
+const SYSTEM_PROMPT = `You are the official "Yojna Setu Assistant", dedicated to helping Indian citizens understand and discover Indian government schemes and benefits.
 
-Your core mission:
-Provide trustworthy, respectful, multilingual, and citizen-friendly guidance to marginalized entrepreneurs, students, women artisans, Self-Help Groups (SHGs), and sanitation workers (Safai Karamcharis).
+CRITICAL DIRECTIVES:
 
-CRITICAL ARCHITECTURAL & ANTI-HALLUCINATION RULES:
-1. Grounding in Verified Data:
-   - You MUST NOT invent, guess, or fabricate scheme names, interest rates, loan ceilings, income limits, eligibility criteria, required documents, or channel partner contacts.
-   - You MUST call the appropriate tool whenever you need verified facts:
-     - Use 'get_all_schemes' or 'search_schemes' to find suitable schemes.
-     - Use 'get_scheme_details' for deep dive into interest rates, loan caps, moratorium, or documents.
-     - Use 'check_scheme_eligibility' to evaluate user eligibility and match score using the deterministic rules engine.
-     - Use 'calculate_loan_emi' to calculate official reducing-balance EMIs.
-     - Use 'search_channel_partners' to find SCAs and banks.
-2. Missing Data Handling:
-   - If a user asks for information that is not available in Yojna Setu's verified data or tools, state honestly:
-     "This specific information is not currently available in Yojna Setu's verified database. Please confirm directly with your State Channelising Agency (SCA) or channel partner bank."
-3. Mandatory Disclaimer:
-   - Whenever discussing eligibility, loan approval, or sanctions, you MUST remind the citizen:
-     "Note: Final eligibility and loan sanction are subject to physical document verification by your State Channelising Agency (SCA) or lending bank."
-4. Language & Tone:
-   - Tone: Courteous, plain, encouraging, accessible, simple, and respectful. Avoid heavy bureaucratic jargon.
-   - Multilingual: Detect the user's language.
-     - If the user asks in Hindi or Hinglish, respond in natural, clear conversational Hindi (हिंदी) or Hinglish as appropriate.
-     - If the user asks in English, respond in clean Indian English.
-5. Conversation Context & Memory:
-   - Maintain context across the conversation.
-   - If the user has already provided details (e.g., income, business type, gender, loan amount), do NOT ask for those details again. Build upon what is already known!
-6. Formatting:
-   - Use clear markdown formatting with bullet points and bold key values (e.g. **₹1,40,000**, **4% p.a.**, **36 months**).
-   - Keep answers focused and actionable.
+1. ANSWER THE EXACT QUESTION ASKED:
+- Understand the user's specific question and answer ONLY what is relevant to that question.
+- Do NOT output long generic explanations, repetitive boilerplate, or unsolicited essays.
+- Examples:
+  * "What is PM Kisan?" -> Answer ONLY what the scheme is in 1-2 concise sentences. (e.g. "PM-KISAN is a Government of India scheme that provides financial support to eligible farmer families. The benefit is provided through direct bank transfer.")
+  * "Who can apply for PM Kisan?" / "Who is eligible?" -> Answer ONLY about eligibility criteria.
+  * "How much money is given?" -> Answer ONLY about the financial benefit / amount.
+  * "Which documents are required?" -> Answer ONLY the bulleted list of documents.
+  * "How to apply?" -> Answer ONLY the application steps / portal.
+  * "What is the interest rate / EMI?" -> Answer ONLY the interest rate / EMI details.
+
+2. CONTEXT AWARENESS & MULTI-TURN SESSION MEMORY:
+- Maintain conversation context across the current session.
+- When the user asks a follow-up without repeating the scheme name (e.g., "Who can apply?", "How much money?", "Documents required?", "Isme loan kitna milega?", "Kaise apply kare?"), automatically resolve the question to the scheme discussed in the previous turn.
+- Do NOT ask the user to repeat the scheme name.
+
+3. USE EXISTING VERIFIED SCHEME DATA:
+- Answer using verified scheme data from the tools.
+- Do NOT invent schemes, eligibility rules, benefits, application procedures, URLs, amounts, or government facts.
+- If information is not available in the verified database, state clearly:
+  "This specific information is not currently available in Yojna Setu's verified database. Please check official government portals (such as myscheme.gov.in) or visit your local administrative office."
+
+4. DEMOGRAPHIC QUESTIONS:
+- Do NOT ask for demographic information (income, age, caste, gender) for informational questions ("What is this scheme?", "What is the benefit?", etc.).
+- ONLY ask for demographic details if the user specifically requests personalized eligibility assessment ("Am I eligible?", "Check my eligibility", "Mere liye kaunsi scheme hai?").
+
+5. SCHEME DISCOVERY:
+- If the user asks broad questions like "Students ke liye schemes batao", "Women ke liye government schemes?", "Farmers ke liye kya schemes hain?", "Scholarship schemes batao":
+  * Present a concise list of 2-4 matching schemes with a 1-line description of each.
+  * Do NOT ask for demographic details unless needed.
+
+6. ACTIONS & NAVIGATION:
+- When appropriate, mention relevant Yojna Setu tools:
+  * "You can open the **Smart Scheme Recommender** to check schemes based on your details."
+  * "Open the **EMI Calculator** from Yojna Setu to calculate monthly installments."
+  * "Use the **Channel Partner Locator** to find nearby State Channelising Agency (SCA) or bank branches."
+
+7. ERROR & OUT-OF-SCOPE QUESTIONS:
+- If the user's question is unrelated to government schemes or Yojna Setu (e.g. general trivia, coding, sports):
+  * Politely state: "I'm here to help with Indian government schemes, eligibility, benefits, documents, and Yojna Setu services. Please ask me something related to these."
+
+8. LANGUAGE & TONE:
+- Courteous, respectful, concise, clear, and direct.
+- Respond in the language used by the user (Hindi, Hinglish, or English).
 
 OUTPUT FORMAT AT THE END OF YOUR RESPONSE:
-At the very end of your response, output two metadata tags on their own lines:
-SOURCES: ["Code1", "Code2"] (e.g. SOURCES: ["MCF", "MSY"])
+SOURCES: ["Code1", "Code2"] (e.g. SOURCES: ["PM-KISAN"] or SOURCES: ["MCF"])
 SUGGESTED_QUESTIONS: ["Follow up question 1?", "Follow up question 2?", "Follow up question 3?"]
-USER_PROFILE_UPDATE: {"category":"SC","annual_family_income":300000,...} (include any newly discovered profile attributes, or leave empty object {})`;
+USER_PROFILE_UPDATE: {} (optional profile attributes discovered, or empty object {})`;
 
 // -------------------------------------------------------------
-// Profile Extractor Helper
+// Active Scheme & Context Resolution Helper
 // -------------------------------------------------------------
-export function extractProfileFromText(text: string, current: UserProfileContext = {}): UserProfileContext {
-  const updated = { ...current };
-  const lower = text.toLowerCase();
+interface SchemeContextMatch {
+  schemeKey: string;
+  schemeName: string;
+  nationalScheme?: VerifiedSchemeInfo;
+  nsfdcScheme?: Scheme;
+}
 
-  // Category
-  if (lower.includes('sc') || lower.includes('scheduled caste') || lower.includes('अनुसूचित जाति')) {
-    updated.category = 'SC';
-  }
+export function detectActiveSchemeFromHistory(
+  currentMessage: string,
+  history: ConversationMessage[]
+): SchemeContextMatch | null {
+  const schemes = schemesData as Scheme[];
+  const allNat = VERIFIED_SCHEMES_REGISTRY;
 
-  // Gender
-  if (lower.includes('woman') || lower.includes('women') || lower.includes('female') || lower.includes('महिला') || lower.includes('aurat')) {
-    updated.gender = 'female';
-    updated.applicant_type = 'female';
-  } else if (lower.includes('shg') || lower.includes('self help group') || lower.includes('स्वयं सहायता समूह')) {
-    updated.applicant_type = 'shg';
-  } else if (lower.includes('safai karamchari') || lower.includes('sanitation worker') || lower.includes('सफाई कर्मचारी') || lower.includes('manual scavenger')) {
-    updated.applicant_type = 'safai_karamchari';
-  }
-
-  // Income pattern e.g. "3 lakh", "300000", "2.5 lakh", "3 lac", "30000"
-  const lakhMatch = text.match(/([0-9]+(?:\.[0-9]+)?)\s*(?:lakh|lakhs|lac|lacs|लाख)/i);
-  if (lakhMatch) {
-    const num = parseFloat(lakhMatch[1]);
-    if (!isNaN(num)) {
-      if (lower.includes('income') || lower.includes('salary') || lower.includes('kamata') || lower.includes('aay') || lower.includes('आय')) {
-        updated.annual_family_income = Math.round(num * 100000);
-      } else if (lower.includes('cost') || lower.includes('loan') || lower.includes('chahiye') || lower.includes('need') || lower.includes('require')) {
-        updated.estimated_project_cost = Math.round(num * 100000);
-        updated.loan_required = Math.round(num * 100000);
-      }
+  // 1. Check current message first
+  const currentLower = currentMessage.toLowerCase();
+  for (const s of allNat) {
+    if (
+      currentLower.includes(s.code.toLowerCase()) ||
+      currentLower.includes(s.name.toLowerCase()) ||
+      currentLower.includes(s.nameHi.toLowerCase()) ||
+      s.keywords.some((k) => currentLower.includes(k))
+    ) {
+      return { schemeKey: s.id, schemeName: s.name, nationalScheme: s };
     }
   }
 
-  // Direct rupee number match: ₹2,00,000 or 200000
-  const rupeeMatch = text.match(/(?:rs\.?|inr|₹)?\s*([1-9][0-9,]{3,9})/i);
-  if (rupeeMatch && !lakhMatch) {
-    const rawNum = parseInt(rupeeMatch[1].replace(/,/g, ''), 10);
-    if (!isNaN(rawNum) && rawNum >= 10000) {
-      if (lower.includes('income') || lower.includes('आय')) {
-        updated.annual_family_income = rawNum;
-      } else if (lower.includes('loan') || lower.includes('cost') || lower.includes('budget') || lower.includes('chahiye')) {
-        updated.estimated_project_cost = rawNum;
-        updated.loan_required = rawNum;
-      }
+  for (const s of schemes) {
+    if (
+      currentLower.includes(s.code.toLowerCase()) ||
+      currentLower.includes(s.name.toLowerCase()) ||
+      currentLower.includes(s.nameHi.toLowerCase()) ||
+      currentLower.includes(s.id.toLowerCase().replace(/_/g, ' '))
+    ) {
+      return { schemeKey: s.id, schemeName: s.name, nsfdcScheme: s };
     }
   }
 
-  // Business Type
-  if (lower.includes('e-rickshaw') || lower.includes('erickshaw') || lower.includes('ई-रिक्शा') || lower.includes('rickshaw') || lower.includes('auto')) {
-    updated.purpose = 'business';
-    updated.business_type = 'e_rickshaw';
-  } else if (lower.includes('solar') || lower.includes('सौर') || lower.includes('green energy')) {
-    updated.purpose = 'business';
-    updated.business_type = 'solar_units';
-  } else if (lower.includes('tailor') || lower.includes('sewing') || lower.includes('सिलाई') || lower.includes('boutique') || lower.includes('कपड़े')) {
-    updated.purpose = 'business';
-    updated.business_type = 'tailoring';
-  } else if (lower.includes('study') || lower.includes('college') || lower.includes('btech') || lower.includes('degree') || lower.includes('education') || lower.includes('पढ़ाई') || lower.includes('शिक्षा')) {
-    updated.purpose = 'education';
-    updated.business_type = 'higher_education';
-  } else if (lower.includes('cleaning') || lower.includes('vacuum') || lower.includes('sanitation') || lower.includes('सफाई') || lower.includes('sewer')) {
-    updated.purpose = 'sanitation';
-    updated.business_type = 'mechanized_sanitation';
-  } else if (lower.includes('shop') || lower.includes('dukaan') || lower.includes('दुकान') || lower.includes('grocery') || lower.includes('retail')) {
-    updated.purpose = 'business';
-    updated.business_type = 'retail_shop';
+  // Common keywords matching specific schemes
+  if (currentLower.includes('e-rickshaw') || currentLower.includes('rickshaw') || currentLower.includes('solar')) {
+    const gbs = schemes.find((s) => s.id === 'green_business_scheme');
+    if (gbs) return { schemeKey: gbs.id, schemeName: gbs.name, nsfdcScheme: gbs };
+  }
+  if (currentLower.includes('safai') || currentLower.includes('sanitation') || currentLower.includes('cleaning machine')) {
+    const suy = schemes.find((s) => s.id === 'swachhta_udayami_yojana');
+    if (suy) return { schemeKey: suy.id, schemeName: suy.name, nsfdcScheme: suy };
+  }
+  if (currentLower.includes('micro credit') || currentLower.includes('mcf')) {
+    const mcf = schemes.find((s) => s.id === 'micro_credit_finance');
+    if (mcf) return { schemeKey: mcf.id, schemeName: mcf.name, nsfdcScheme: mcf };
   }
 
-  // State / City
-  const knownLocations = ['Delhi', 'Uttar Pradesh', 'Noida', 'Lucknow', 'Gurugram', 'Haryana', 'Faridabad', 'Maharashtra', 'Mumbai', 'Bihar', 'Patna'];
-  for (const loc of knownLocations) {
-    if (lower.includes(loc.toLowerCase())) {
-      if (['Delhi', 'Uttar Pradesh', 'Haryana', 'Maharashtra', 'Bihar'].includes(loc)) {
-        updated.state = loc;
-      } else {
-        updated.district = loc;
+  // 2. If not found in current message, look back in conversation history (newest to oldest)
+  const reversedHistory = [...history].reverse();
+  for (const msg of reversedHistory) {
+    const txt = msg.text.toLowerCase();
+    for (const s of allNat) {
+      if (
+        txt.includes(s.code.toLowerCase()) ||
+        txt.includes(s.name.toLowerCase()) ||
+        txt.includes(s.nameHi.toLowerCase()) ||
+        s.keywords.some((k) => txt.includes(k))
+      ) {
+        return { schemeKey: s.id, schemeName: s.name, nationalScheme: s };
       }
+    }
+
+    for (const s of schemes) {
+      if (
+        txt.includes(s.code.toLowerCase()) ||
+        txt.includes(s.name.toLowerCase()) ||
+        txt.includes(s.nameHi.toLowerCase()) ||
+        txt.includes(s.id.toLowerCase().replace(/_/g, ' '))
+      ) {
+        return { schemeKey: s.id, schemeName: s.name, nsfdcScheme: s };
+      }
+    }
+
+    if (txt.includes('e-rickshaw') || txt.includes('solar')) {
+      const gbs = schemes.find((s) => s.id === 'green_business_scheme');
+      if (gbs) return { schemeKey: gbs.id, schemeName: gbs.name, nsfdcScheme: gbs };
+    }
+    if (txt.includes('mahila') || txt.includes('women')) {
+      const msy = schemes.find((s) => s.id === 'mahila_samriddhi_yojana');
+      if (msy) return { schemeKey: msy.id, schemeName: msy.name, nsfdcScheme: msy };
     }
   }
 
-  return updated;
+  return null;
 }
 
 // -------------------------------------------------------------
-// Deterministic Fallback Assistant (Rule-based Grounded Engine)
+// Deterministic Grounded Fallback Assistant
 // -------------------------------------------------------------
-function buildFallbackResponse(
+export function buildFallbackResponse(
   message: string,
   userProfile: UserProfileContext,
   language: 'en' | 'hi',
-  schemeContext?: any
+  conversationHistory: ConversationMessage[] = []
 ): AssistantChatResponse {
-  const lower = message.toLowerCase();
+  const lower = message.toLowerCase().trim();
   const schemes = schemesData as Scheme[];
-  const toolsUsed: string[] = [];
-  const sources: string[] = [];
 
-  // Intent 1: EMI Calculation
-  const isEmiQuery = lower.includes('emi') || lower.includes('installment') || lower.includes('किस्त') || lower.includes('monthly payment');
+  // 1. Identify active scheme from history or current message
+  const activeMatch = detectActiveSchemeFromHistory(message, conversationHistory);
+  const activeNat = activeMatch?.nationalScheme;
+  const activeNsfdc = activeMatch?.nsfdcScheme;
+  const activeSchemeName = activeNat?.name || activeNsfdc?.name;
+
+  // 2. Identify Question Intent
+  const isGreeting =
+    lower === 'hi' ||
+    lower === 'hello' ||
+    lower === 'namaste' ||
+    lower === 'नमस्ते' ||
+    lower === 'hey' ||
+    lower.startsWith('hi ') ||
+    lower.startsWith('hello ');
+
+  const isOutOfScope =
+    (lower.includes('weather') ||
+      lower.includes('cricket') ||
+      lower.includes('capital of') ||
+      lower.includes('recipe') ||
+      lower.includes('write code') ||
+      lower.includes('python') ||
+      lower.includes('movie')) &&
+    !lower.includes('scheme') &&
+    !lower.includes('yojna');
+
+  const isDefinitionQuery =
+    lower.startsWith('what is') ||
+    lower.startsWith('what are') ||
+    lower.startsWith('tell me about') ||
+    lower.includes('kya hai') ||
+    lower.includes('क्या है') ||
+    lower.includes('batao') ||
+    lower.includes('बताएं') ||
+    lower.includes('details of') ||
+    lower.includes('overview');
+
+  const isEligibilityQuery =
+    lower.includes('who can apply') ||
+    lower.includes('who is eligible') ||
+    lower.includes('eligibility') ||
+    lower.includes('qualify') ||
+    lower.includes('eligible') ||
+    lower.includes('patrata') ||
+    lower.includes('पात्रता') ||
+    lower.includes('कौन आवेदन') ||
+    lower.includes('कौन पात्र') ||
+    lower.includes('kaun apply');
+
+  const isMoneyQuery =
+    lower.includes('how much money') ||
+    lower.includes('how much loan') ||
+    lower.includes('how much financial') ||
+    lower.includes('benefit') ||
+    lower.includes('amount') ||
+    lower.includes('kitna paisa') ||
+    lower.includes('kitna loan') ||
+    lower.includes('कितना पैसा') ||
+    lower.includes('कितना ऋण') ||
+    lower.includes('सहायता राशि') ||
+    lower.includes('subsidy');
+
+  const isDocQuery =
+    lower.includes('document') ||
+    lower.includes('documents') ||
+    lower.includes('dastavez') ||
+    lower.includes('दस्तावेज') ||
+    lower.includes('कागजात') ||
+    lower.includes('certificate') ||
+    lower.includes('papers') ||
+    lower.includes('required papers');
+
+  const isApplyQuery =
+    lower.includes('how to apply') ||
+    lower.includes('where to apply') ||
+    lower.includes('kaise apply') ||
+    lower.includes('kahan aavedan') ||
+    lower.includes('कहाँ आवेदन') ||
+    lower.includes('कैसे आवेदन') ||
+    lower.includes('registration') ||
+    lower.includes('portal') ||
+    lower.includes('apply');
+
+  const isEmiQuery =
+    lower.includes('emi') ||
+    lower.includes('installment') ||
+    lower.includes('interest rate') ||
+    lower.includes('byaj') ||
+    lower.includes('ब्याज') ||
+    lower.includes('किस्त') ||
+    lower.includes('monthly payment');
+
+  const isDiscoveryQuery =
+    lower.includes('schemes for') ||
+    lower.includes('schemes list') ||
+    lower.includes('available schemes') ||
+    lower.includes('योजनाएं') ||
+    lower.includes('योजना बताओ') ||
+    lower.includes('students ke liye') ||
+    lower.includes('women ke liye') ||
+    lower.includes('farmers ke liye') ||
+    lower.includes('scholarship');
+
+  // Intent A: Out of Scope
+  if (isOutOfScope) {
+    const reply =
+      language === 'hi'
+        ? 'मैं सरकारी योजनाओं, पात्रता, लाभ, आवश्यक दस्तावेजों और योजना सेतु सेवाओं में आपकी सहायता के लिए हूँ। कृपया इनसे संबंधित कोई प्रश्न पूछें।'
+        : "I'm here to help with Indian government schemes, eligibility, benefits, documents, and Yojna Setu services. Please ask me something related to these.";
+    return {
+      reply,
+      language,
+      sources: [],
+      suggestedQuestions: ['What is PM Kisan?', 'Check Mahila Samriddhi Yojana', 'Explore student education loans'],
+      userProfile,
+      toolsUsed: [],
+    };
+  }
+
+  // Intent B: Greeting
+  if (isGreeting && !activeMatch) {
+    const reply =
+      language === 'hi'
+        ? 'नमस्ते! मैं **योजना सेतु सहायक** हूँ। मैं सरकारी योजनाओं, पात्रता, लाभ और दस्तावेजों की सटीक जानकारी देने के लिए तैयार हूँ। आप किसी विशिष्ट योजना के बारे में पूछ सकते हैं (जैसे: **PM-KISAN**, **महिला समृद्धि योजना**, **मुद्रा योजना**, **शिक्षा ऋण**)।'
+        : "Namaste! I am the **Yojna Setu Assistant**. I provide clear, factual guidance on Indian government schemes, eligibility, benefits, and required documents. You can ask about any scheme (such as **PM-KISAN**, **Mahila Samriddhi Yojana**, **PM Mudra**, **Education Loan**).";
+    return {
+      reply,
+      language,
+      sources: [],
+      suggestedQuestions: ['What is PM Kisan?', 'Who can apply for Mahila Samriddhi?', 'Show schemes for students'],
+      userProfile,
+      toolsUsed: [],
+    };
+  }
+
+  // Intent C: Specific Scheme Query (Grounded by Exact Slice)
+  if (activeMatch) {
+    // 1. ELIGIBILITY ONLY
+    if (isEligibilityQuery) {
+      if (activeNat) {
+        const criteria = language === 'hi' ? activeNat.eligibilityHi : activeNat.eligibility;
+        const reply =
+          language === 'hi'
+            ? `### ${activeNat.nameHi} - पात्रता शर्तें:\n\n` +
+              criteria.map((c) => `- ${c}`).join('\n') +
+              `\n\n*नोट: पात्रता सत्यापन संबंधित विभाग या बैंक द्वारा भौतिक दस्तावेजों के आधार पर किया जाता है।*`
+            : `### Eligibility for ${activeNat.name}:\n\n` +
+              criteria.map((c) => `- ${c}`).join('\n') +
+              `\n\n*Note: Final qualification depends on physical verification of documents by the authorized department or partner bank.*`;
+        return {
+          reply,
+          language,
+          sources: [activeNat.code],
+          suggestedQuestions: [
+            language === 'hi' ? 'इसमें कितना पैसा मिलता है?' : 'How much money is given?',
+            language === 'hi' ? 'कौन से दस्तावेज चाहिए?' : 'Which documents are required?',
+            language === 'hi' ? 'आवेदन कैसे करें?' : 'How to apply?',
+          ],
+          userProfile,
+          toolsUsed: ['get_scheme_details'],
+        };
+      }
+
+      if (activeNsfdc) {
+        const reply =
+          language === 'hi'
+            ? `### ${activeNsfdc.nameHi} - पात्रता शर्तें:\n\n` +
+              `- **लक्षित वर्ग**: ${activeNsfdc.targetAudienceHi}\n` +
+              `- **पारिवारिक आय सीमा**: वार्षिक आय ₹${activeNsfdc.eligibility.maxFamilyIncome.toLocaleString('en-IN')} से कम होनी चाहिए।\n` +
+              `- **आयु सीमा**: ${activeNsfdc.eligibility.minAge || 18} से ${activeNsfdc.eligibility.maxAge || 65} वर्ष।\n` +
+              `- **स्वीकृत गतिविधियाँ**: ${activeNsfdc.eligibility.projectTypes.join(', ')}।\n\n` +
+              `*नोट: अंतिम पात्रता भौतिक दस्तावेज सत्यापन के अधीन है।*`
+            : `### Eligibility for ${activeNsfdc.name}:\n\n` +
+              `- **Target Group**: ${activeNsfdc.targetAudience}\n` +
+              `- **Family Income Ceiling**: Annual household income must be ≤ ₹${activeNsfdc.eligibility.maxFamilyIncome.toLocaleString('en-IN')} p.a.\n` +
+              `- **Age Criteria**: Between ${activeNsfdc.eligibility.minAge || 18} and ${activeNsfdc.eligibility.maxAge || 65} years.\n` +
+              `- **Eligible Sectors**: ${activeNsfdc.eligibility.projectTypes.join(', ')}.\n\n` +
+              `*Note: Eligibility depends on document verification by your State Channelising Agency (SCA) or bank.*`;
+        return {
+          reply,
+          language,
+          sources: [activeNsfdc.code],
+          suggestedQuestions: [
+            language === 'hi' ? 'अधिकतम ऋण राशि कितनी है?' : 'What is the maximum loan amount?',
+            language === 'hi' ? 'आवश्यक दस्तावेज क्या हैं?' : 'What documents are needed?',
+            language === 'hi' ? 'मासिक ईएमआई (EMI) कितनी होगी?' : 'What will be the monthly EMI?',
+          ],
+          userProfile,
+          toolsUsed: ['get_scheme_details'],
+        };
+      }
+    }
+
+    // 2. FINANCIAL BENEFIT / AMOUNT ONLY
+    if (isMoneyQuery) {
+      if (activeNat) {
+        const benefitText = language === 'hi' ? activeNat.financialBenefitHi : activeNat.financialBenefit;
+        const reply =
+          language === 'hi'
+            ? `### ${activeNat.nameHi} - वित्तीय लाभ / सहायता राशि:\n\n${benefitText}`
+            : `### Financial Benefit under ${activeNat.name}:\n\n${benefitText}`;
+        return {
+          reply,
+          language,
+          sources: [activeNat.code],
+          suggestedQuestions: [
+            language === 'hi' ? 'इसके लिए कौन आवेदन कर सकता है?' : 'Who can apply?',
+            language === 'hi' ? 'आवश्यक दस्तावेज कौन से हैं?' : 'Which documents are required?',
+            language === 'hi' ? 'आवेदन की प्रक्रिया क्या है?' : 'How to apply?',
+          ],
+          userProfile,
+          toolsUsed: ['get_scheme_details'],
+        };
+      }
+
+      if (activeNsfdc) {
+        const reply =
+          language === 'hi'
+            ? `### ${activeNsfdc.nameHi} - वित्तीय सहायता व ऋण शर्तें:\n\n` +
+              `- **अधिकतम ऋण सीमा**: **₹${activeNsfdc.terms.maxLoanAmountNumeric.toLocaleString('en-IN')}** तक\n` +
+              `- **ब्याज दर**: **${activeNsfdc.terms.interestRatePercentNumeric}% वार्षिक** (महिला लाभार्थियों को 0.5% अतिरिक्त छूट)\n` +
+              `- **पुनर्भुगतान अवधि**: अधिकतम ${activeNsfdc.terms.maxTenureMonthsNumeric} महीने (${activeNsfdc.terms.moratoriumMonthsNumeric} महीने मोरटोरियम सहित)`
+            : `### Financial Terms for ${activeNsfdc.name}:\n\n` +
+              `- **Maximum Loan Assistance**: Up to **₹${activeNsfdc.terms.maxLoanAmountNumeric.toLocaleString('en-IN')}**\n` +
+              `- **Concessional Interest Rate**: **${activeNsfdc.terms.interestRatePercentNumeric}% p.a.** (Women receive a 0.5% p.a. rebate)\n` +
+              `- **Repayment Tenure**: Up to ${activeNsfdc.terms.maxTenureMonthsNumeric} months (including ${activeNsfdc.terms.moratoriumMonthsNumeric} months moratorium)`;
+        return {
+          reply,
+          language,
+          sources: [activeNsfdc.code],
+          suggestedQuestions: [
+            language === 'hi' ? 'ईएमआई (EMI) की गणना कैसे करें?' : 'How to calculate monthly EMI?',
+            language === 'hi' ? 'इसके लिए कौन से दस्तावेज चाहिए?' : 'Which documents are needed?',
+            language === 'hi' ? 'नजदीकी बैंक या एससी निगम कहाँ है?' : 'Where is the nearest partner office?',
+          ],
+          userProfile,
+          toolsUsed: ['get_scheme_details'],
+        };
+      }
+    }
+
+    // 3. REQUIRED DOCUMENTS ONLY
+    if (isDocQuery) {
+      if (activeNat) {
+        const docs = language === 'hi' ? activeNat.requiredDocumentsHi : activeNat.requiredDocuments;
+        const reply =
+          language === 'hi'
+            ? `### ${activeNat.nameHi} - आवश्यक दस्तावेज:\n\n` + docs.map((d, i) => `${i + 1}. **${d}**`).join('\n')
+            : `### Required Documents for ${activeNat.name}:\n\n` + docs.map((d, i) => `${i + 1}. **${d}**`).join('\n');
+        return {
+          reply,
+          language,
+          sources: [activeNat.code],
+          suggestedQuestions: [
+            language === 'hi' ? 'आवेदन कैसे और कहाँ जमा करना है?' : 'How and where to apply?',
+            language === 'hi' ? 'पात्रता की मुख्य शर्तें क्या हैं?' : 'Who is eligible?',
+            language === 'hi' ? 'कितनी वित्तीय सहायता मिलती है?' : 'How much financial benefit?',
+          ],
+          userProfile,
+          toolsUsed: ['get_scheme_details'],
+        };
+      }
+
+      if (activeNsfdc) {
+        const reply =
+          language === 'hi'
+            ? `### ${activeNsfdc.nameHi} - आवश्यक दस्तावेज:\n\n` +
+              activeNsfdc.requiredDocuments.map((d, i) => `${i + 1}. **${d}**`).join('\n') +
+              `\n\n*नोट: आवेदन के साथ स्व-सत्यापित प्रतियां संलग्न करनी होती हैं।*`
+            : `### Required Documents for ${activeNsfdc.name}:\n\n` +
+              activeNsfdc.requiredDocuments.map((d, i) => `${i + 1}. **${d}**`).join('\n') +
+              `\n\n*Note: Self-attested copies should be submitted with the application form.*`;
+        return {
+          reply,
+          language,
+          sources: [activeNsfdc.code],
+          suggestedQuestions: [
+            language === 'hi' ? 'आवेदन कहाँ जमा करना है?' : 'Where to submit application?',
+            language === 'hi' ? 'पात्रता की शर्तें क्या हैं?' : 'What are the eligibility conditions?',
+            language === 'hi' ? 'नजदीकी चैनल पार्टनर कार्यालय कहाँ है?' : 'Where is the nearest Channel Partner office?',
+          ],
+          userProfile,
+          toolsUsed: ['get_scheme_details'],
+        };
+      }
+    }
+
+    // 4. HOW TO APPLY ONLY
+    if (isApplyQuery) {
+      if (activeNat) {
+        const applyText = language === 'hi' ? activeNat.howToApplyHi : activeNat.howToApply;
+        const portalText = activeNat.officialPortal ? `\n\n**आधिकारिक पोर्टल**: ${activeNat.officialPortal}` : '';
+        const portalTextEn = activeNat.officialPortal ? `\n\n**Official Portal**: ${activeNat.officialPortal}` : '';
+        const reply =
+          language === 'hi'
+            ? `### ${activeNat.nameHi} - आवेदन प्रक्रिया:\n\n${applyText}${portalText}`
+            : `### How to Apply for ${activeNat.name}:\n\n${applyText}${portalTextEn}`;
+        return {
+          reply,
+          language,
+          sources: [activeNat.code],
+          suggestedQuestions: [
+            language === 'hi' ? 'आवेदन के लिए कौन से दस्तावेज चाहिए?' : 'What documents are required?',
+            language === 'hi' ? 'पात्रता शर्तें क्या हैं?' : 'Who can apply?',
+            language === 'hi' ? 'कितना लाभ मिलता है?' : 'How much benefit is given?',
+          ],
+          userProfile,
+          toolsUsed: ['get_scheme_details'],
+        };
+      }
+
+      if (activeNsfdc) {
+        const reply =
+          language === 'hi'
+            ? `### ${activeNsfdc.nameHi} - आवेदन प्रक्रिया:\n\n` +
+              `1. अपने जिले के **राज्य चैनेलाइजिंग एजेंसी (SCA)** कार्यालय (विकास भवन / कलेक्ट्रेट) या अधिकृत सार्वजनिक क्षेत्र के बैंक (जैसे PNB, SBI) से आवेदन पत्र प्राप्त करें।\n` +
+              `2. आवेदन पत्र भरकर सभी आवश्यक दस्तावेज (जाति प्रमाण पत्र, आय प्रमाण पत्र, आधार कार्ड, बैंक पासबुक और प्रोजेक्ट कोटेशन) संलग्न करें।\n` +
+              `3. आप वेबसाइट के **"Channel Partner Locator"** टैब पर जाकर अपने नजदीकी कार्यालय का पता देख सकते हैं।`
+            : `### How to Apply for ${activeNsfdc.name}:\n\n` +
+              `1. Obtain the official application form from your **State Channelising Agency (SCA)** office at the District Vikas Bhawan / Collectorate, or from designated Public Sector Banks (e.g. PNB, SBI).\n` +
+              `2. Attach mandatory documents (SC Caste Certificate, Income Certificate, Aadhaar, Bank passbook, and equipment quotation).\n` +
+              `3. Use the **Channel Partner Locator** tab on Yojna Setu to find office addresses and contact numbers in your district.`;
+        return {
+          reply,
+          language,
+          sources: [activeNsfdc.code],
+          suggestedQuestions: [
+            language === 'hi' ? 'नजदीकी चैनल पार्टनर कार्यालय कैसे खोजें?' : 'How to locate nearest Channel Partner?',
+            language === 'hi' ? 'आवश्यक दस्तावेज कौन से हैं?' : 'What documents are required?',
+            language === 'hi' ? 'मासिक ईएमआई कितनी होगी?' : 'What will be the monthly EMI?',
+          ],
+          userProfile,
+          toolsUsed: ['get_scheme_details'],
+        };
+      }
+    }
+
+    // 5. DEFINITION / OVERVIEW ONLY (e.g. "What is PM Kisan?")
+    if (activeNat) {
+      const def = language === 'hi' ? activeNat.definitionHi : activeNat.definition;
+      return {
+        reply: def,
+        language,
+        sources: [activeNat.code],
+        suggestedQuestions: [
+          language === 'hi' ? `Who can apply for ${activeNat.code}?` : `Who can apply for ${activeNat.code}?`,
+          language === 'hi' ? `How much money is given?` : `How much money is given?`,
+          language === 'hi' ? `Which documents are required?` : `Which documents are required?`,
+        ],
+        userProfile,
+        toolsUsed: ['get_scheme_details'],
+      };
+    }
+
+    if (activeNsfdc) {
+      const def = language === 'hi' ? activeNsfdc.descriptionHi : activeNsfdc.description;
+      return {
+        reply: `${activeNsfdc.name}: ${def}`,
+        language,
+        sources: [activeNsfdc.code],
+        suggestedQuestions: [
+          language === 'hi' ? 'पात्रता की शर्तें क्या हैं?' : 'Who is eligible?',
+          language === 'hi' ? 'अधिकतम ऋण कितना मिल सकता है?' : 'How much loan is given?',
+          language === 'hi' ? 'आवश्यक दस्तावेज क्या हैं?' : 'Which documents are required?',
+        ],
+        userProfile,
+        toolsUsed: ['get_scheme_details'],
+      };
+    }
+  }
+
+  // Intent D: EMI Calculation
   if (isEmiQuery) {
-    toolsUsed.push('calculate_loan_emi');
     const amount = userProfile.loan_required || userProfile.estimated_project_cost || 100000;
     const rate = 5.0;
     const tenure = 36;
@@ -537,429 +927,133 @@ function buildFallbackResponse(
       moratoriumMonths: 3,
     });
 
-    sources.push('MCF');
-    const reply = language === 'hi'
-      ? `### मासिक किस्त (EMI) गणना विवरण:\n\n` +
-        `यदि आप **${emiResult.principalAmount}** का ऋण **${emiResult.annualInterestRate}** की रियायती ब्याज दर पर **${emiResult.tenureMonths}** के लिए लेते हैं (जिसमें 3 महीने का मोरटोरियम / छूट अवधि शामिल है):\n\n` +
-        `- **अनुमानित मासिक ईएमआई**: **${emiResult.monthlyEmi}**\n` +
-        `- **कुल ब्याज देय**: ${emiResult.totalInterestPayable}\n` +
-        `- **कुल पुनर्भुगतान**: ${emiResult.totalAmountPayable}\n` +
-        `- **गणना पद्धति**: ${emiResult.calculationMethod}\n\n` +
-        `> **सुझाव**: महिला उद्यमियों को 0.5% अतिरिक्त ब्याज छूट मिलती है (प्रभावी दर 4.5% p.a.)।\n\n` +
-        `*नोट: अंतिम ईएमआई और ऋण स्वीकृति संबंधित राज्य चैनेलाइजिंग एजेंसी (SCA) या बैंक द्वारा भौतिक दस्तावेजों के सत्यापन के अधीन है।*`
-      : `### Monthly EMI Calculation Details:\n\n` +
-        `For a loan of **${emiResult.principalAmount}** at a concessional rate of **${emiResult.annualInterestRate}** over **${emiResult.tenureMonths}** (including a 3-month moratorium/gestation period):\n\n` +
-        `- **Estimated Monthly Installment**: **${emiResult.monthlyEmi}**\n` +
-        `- **Total Interest Payable**: ${emiResult.totalInterestPayable}\n` +
-        `- **Total Repayment Amount**: ${emiResult.totalAmountPayable}\n` +
-        `- **Formula Used**: ${emiResult.calculationMethod}\n\n` +
-        `> **Benefit**: Women entrepreneurs receive a 0.5% p.a. interest rebate (Effective: 4.5% p.a.).\n\n` +
-        `*Note: Final eligibility and loan sanction are subject to verification of physical documents by your State Channelising Agency (SCA) or lending bank.*`;
+    const reply =
+      language === 'hi'
+        ? `### मासिक किस्त (EMI) गणना:\n\n` +
+          `ऋण राशि **${emiResult.principalAmount}** पर **${emiResult.annualInterestRate}** रियायती ब्याज दर और **${emiResult.tenureMonths}** की अवधि (3 महीने मोरटोरियम सहित):\n\n` +
+          `- **मासिक ईएमआई (EMI)**: **${emiResult.monthlyEmi}**\n` +
+          `- **कुल देय ब्याज**: ${emiResult.totalInterestPayable}\n` +
+          `- **कुल पुनर्भुगतान**: ${emiResult.totalAmountPayable}\n\n` +
+          `आप विभिन्न राशियों और अवधियों के लिए **EMI Calculator** टैब का उपयोग कर सकते हैं।`
+        : `### Monthly EMI Calculation:\n\n` +
+          `For a loan of **${emiResult.principalAmount}** at **${emiResult.annualInterestRate}** over **${emiResult.tenureMonths}** (including 3-month moratorium):\n\n` +
+          `- **Monthly Installment (EMI)**: **${emiResult.monthlyEmi}**\n` +
+          `- **Total Interest**: ${emiResult.totalInterestPayable}\n` +
+          `- **Total Repayment**: ${emiResult.totalAmountPayable}\n\n` +
+          `You can also use the **EMI Calculator** tab on Yojna Setu for custom loan amounts and terms.`;
 
     return {
       reply,
       language,
-      sources,
+      sources: ['MCF'],
       suggestedQuestions: [
-        language === 'hi' ? 'इस ऋण के लिए कौन से दस्तावेज चाहिए?' : 'What documents are required for this loan?',
-        language === 'hi' ? 'महिला समृद्धि योजना में कितनी ब्याज छूट है?' : 'What is the interest rebate under Mahila Samriddhi Yojana?',
-        language === 'hi' ? 'नजदीकी चैनल पार्टनर बैंक कैसे खोजें?' : 'How do I locate my nearest Channel Partner bank?',
+        language === 'hi' ? 'महिला समृद्धि योजना में कितनी ब्याज दर है?' : 'What is the interest rate for Mahila Samriddhi?',
+        language === 'hi' ? 'इसके लिए कौन से दस्तावेज चाहिए?' : 'Which documents are required?',
+        language === 'hi' ? 'नजदीकी चैनल पार्टनर बैंक कैसे खोजें?' : 'How to locate nearest partner bank?',
       ],
       userProfile,
-      toolsUsed,
+      toolsUsed: ['calculate_loan_emi'],
     };
   }
 
-  // Intent 2: Documents Required
-  const isDocQuery = lower.includes('document') || lower.includes('दस्तावेज') || lower.includes('कागजात') || lower.includes('proof') || lower.includes('certificate');
-  if (isDocQuery) {
-    toolsUsed.push('get_scheme_details');
-    sources.push('MCF', 'TLS');
-    const reply = language === 'hi'
-      ? `### एनएसएफडीसी (NSFDC) ऋण हेतु आवश्यक मुख्य दस्तावेज:\n\n` +
-        `1. **जाति प्रमाण पत्र (SC Caste Certificate)**: सक्षम राजस्व अधिकारी (Tehsildar / SDM) द्वारा जारी डिजिटल वैध प्रमाण पत्र।\n` +
-        `2. **पारिवारिक आय प्रमाण पत्र (Income Certificate)**: वार्षिक पारिवारिक आय ₹5.00 लाख से कम होनी चाहिए।\n` +
-        `3. **पहचान व निवास प्रमाण (KYC)**: आधार कार्ड (Aadhaar), वोटर आईडी या निवास प्रमाण पत्र।\n` +
-        `4. **बैंक खाता विवरण (Bank Details)**: सक्रिय बैंक खाते की पासबुक या रद्द चेक (IFSC कोड सहित)।\n` +
-        `5. **परियोजना प्रस्ताव / कोटेशन (Project Proposal/Estimate)**: व्यवसाय उपकरण, ई-रिक्शा, सिलाई मशीन या दुकान सामग्री का आधिकारिक कोटेशन।\n` +
-        `6. **पासपोर्ट साइज फोटो** (2 प्रतियां)।\n\n` +
-        `*नोट: अंतिम ऋण स्वीकृति संबंधित राज्य चैनेलाइजिंग एजेंसी (SCA) या बैंक द्वारा भौतिक दस्तावेजों के सत्यापन के अधीन है।*`
-      : `### Mandatory Documents for NSFDC Loan Schemes:\n\n` +
-        `1. **SC Caste Certificate**: Valid certificate issued by a competent revenue authority (Tehsildar / Sub-Divisional Magistrate).\n` +
-        `2. **Family Income Certificate**: Proving annual household income is within ₹5.00 Lakhs p.a.\n` +
-        `3. **KYC & Identity Proof**: Aadhaar Card, Voter ID, or domicile certificate.\n` +
-        `4. **Bank Account Details**: Active Bank Passbook copy with IFSC or cancelled cheque.\n` +
-        `5. **Project Proposal / Quotation**: Brief business plan, equipment quotation (e.g. for E-rickshaw, machinery, or shop inventory).\n` +
-        `6. **Recent Passport-size Photographs** (2 copies).\n\n` +
-        `*Note: Final eligibility and loan sanction are subject to verification of physical documents by your State Channelising Agency (SCA) or lending bank.*`;
+  // Intent E: Discovery / Broad Topic Search
+  if (isDiscoveryQuery || lower.includes('student') || lower.includes('women') || lower.includes('farmer')) {
+    if (lower.includes('student') || lower.includes('scholarship') || lower.includes('education') || lower.includes('छात्र')) {
+      const reply =
+        language === 'hi'
+          ? `### छात्रों एवं शिक्षा के लिए प्रमुख योजनाएं:\n\n` +
+            `1. **शिक्षा ऋण योजना (ELS)**: भारत और विदेश में उच्च व व्यावसायिक शिक्षा हेतु ₹20 लाख से ₹30 लाख तक रियायती ऋण (4.0% ब्याज दर, छात्राओं हेतु 3.5%)।\n` +
+            `2. **उत्तर-मैट्रिक छात्रवृत्ति (PMS-SC)**: 10वीं के बाद कॉलेज फीस की 100% प्रतिपूर्ति एवं मासिक निर्वाह भत्ता।\n\n` +
+            `किसी विशिष्ट योजना के बारे में विस्तार से जानने के लिए पूछें (जैसे: "What is ELS?" या "PMS-SC eligibility")।`
+          : `### Key Schemes for Students & Higher Education:\n\n` +
+            `1. **Educational Loan Scheme (ELS)**: Concessional loans up to ₹20 Lakhs (India) / ₹30 Lakhs (Abroad) at 4.0% interest (3.5% for female students).\n` +
+            `2. **Post Matric Scholarship (PMS-SC)**: 100% compulsory tuition fee coverage and monthly maintenance allowance for post-10th courses.\n\n` +
+            `Ask about any of these (e.g. "What is ELS?" or "PMS-SC eligibility") for full details.`;
+      return {
+        reply,
+        language,
+        sources: ['ELS', 'PMS-SC'],
+        suggestedQuestions: ['What is Educational Loan Scheme?', 'Eligibility for student education loan', 'What is Post Matric Scholarship?'],
+        userProfile,
+        toolsUsed: ['search_schemes'],
+      };
+    }
 
-    return {
-      reply,
-      language,
-      sources,
-      suggestedQuestions: [
-        language === 'hi' ? 'आवेदन कैसे और कहाँ जमा करना है?' : 'Where and how do I submit my application?',
-        language === 'hi' ? 'क्या ई-रिक्शा के लिए ग्रीन बिजनेस योजना उपलब्ध है?' : 'Is Green Business Scheme available for E-Rickshaws?',
-        language === 'hi' ? 'मेरी ₹3 लाख आय पर कौन सी योजना सबसे अच्छी है?' : 'Which scheme is best for my ₹3 Lakh income?',
-      ],
-      userProfile,
-      toolsUsed,
-    };
+    if (lower.includes('women') || lower.includes('mahila') || lower.includes('महिला')) {
+      const reply =
+        language === 'hi'
+          ? `### महिला उद्यमियों व बालिकाओं हेतु प्रमुख योजनाएं:\n\n` +
+            `1. **महिला समृद्धि योजना (MSY)**: अनुसूचित जाति की महिला उद्यमियों व स्वयं सहायता समूहों हेतु ₹1.40 लाख तक विशेष 4% ब्याज पर ऋण।\n` +
+            `2. **सुकन्या समृद्धि योजना (SSY)**: 10 वर्ष से कम उम्र की बालिकाओं के लिए उच्च ब्याज दर (~8.2%) व कर छूट वाली बचत योजना।\n` +
+            `3. **महिला ब्याज छूट**: योजना सेतु के सभी अन्य ऋणों पर महिलाओं को 0.5% अतिरिक्त ब्याज छूट मिलती है।`
+          : `### Key Government Schemes for Women Entrepreneurs & Girls:\n\n` +
+            `1. **Mahila Samriddhi Yojana (MSY)**: Exclusive micro-credit up to ₹1.40 Lakhs at only 4.0% p.a. for SC women entrepreneurs & SHGs.\n` +
+            `2. **Sukanya Samriddhi Yojana (SSY)**: Government-backed savings scheme for girl children with ~8.2% interest and tax exemptions.\n` +
+            `3. **Affirmative Gender Rebate**: 0.5% p.a. additional interest discount across all NSFDC credit schemes.`;
+      return {
+        reply,
+        language,
+        sources: ['MSY', 'SSY'],
+        suggestedQuestions: ['What is Mahila Samriddhi Yojana?', 'Who can apply for Mahila Samriddhi?', 'What is Sukanya Samriddhi Yojana?'],
+        userProfile: { ...userProfile, gender: 'female' },
+        toolsUsed: ['search_schemes'],
+      };
+    }
+
+    if (lower.includes('farmer') || lower.includes('kisan') || lower.includes('किसान')) {
+      const reply =
+        language === 'hi'
+          ? `### किसानों के लिए प्रमुख योजनाएं:\n\n` +
+            `1. **पीएम किसान सम्मान निधि (PM-KISAN)**: पात्र किसान परिवारों को प्रति वर्ष ₹6,000 की वित्तीय सहायता (3 किस्तों में DBT के माध्यम से)।\n` +
+            `2. **ग्रीन बिजनेस योजना (GBS)**: सौर पंप, सोलर रूफटॉप व कृषि उपकरण हेतु रियायती ऋण सहायता।`
+          : `### Key Government Schemes for Farmers:\n\n` +
+            `1. **PM-KISAN (Kisan Samman Nidhi)**: Direct income support of ₹6,000 per year transferred in 3 equal installments of ₹2,000.\n` +
+            `2. **Green Business Scheme (GBS)**: Concessional finance up to ₹27 Lakhs for solar water pumps and eco-friendly farm enterprises.`;
+      return {
+        reply,
+        language,
+        sources: ['PM-KISAN', 'GBS'],
+        suggestedQuestions: ['What is PM Kisan?', 'Who is eligible for PM Kisan?', 'Which documents are required for PM Kisan?'],
+        userProfile,
+        toolsUsed: ['search_schemes'],
+      };
+    }
   }
 
-  // Intent 3: Women / Mahila Samriddhi
-  const isWomenQuery = lower.includes('women') || lower.includes('mahila') || lower.includes('महिला') || lower.includes('aurat') || lower.includes('samriddhi') || lower.includes('shg');
-  if (isWomenQuery) {
-    toolsUsed.push('get_scheme_details');
-    sources.push('MSY');
-    const msy = schemes.find((s) => s.id === 'mahila_samriddhi_yojana')!;
-    const reply = language === 'hi'
-      ? `### महिला समृद्धि योजना (Mahila Samriddhi Yojana - MSY)\n\n` +
-        `यह योजना विशेष रूप से अनुसूचित जाति की महिला उद्यमियों और महिला स्वयं सहायता समूहों (SHGs) के आर्थिक सशक्तिकरण के लिए तैयार की गई है।\n\n` +
-        `- **अधिकतम ऋण सीमा**: **₹${msy.terms.maxLoanAmountNumeric.toLocaleString('en-IN')}** तक\n` +
-        `- **रियायती ब्याज दर**: केवल **${msy.terms.interestRatePercentNumeric}% वार्षिक** (अति रियायती)\n` +
-        `- **पुनर्भुगतान अवधि**: ${msy.terms.maxTenureMonthsNumeric} महीने (3 महीने मोरटोरियम सहित)\n` +
-        `- **पात्रता**: वार्षिक पारिवारिक आय ₹5,00,000 से कम होनी चाहिए।\n` +
-        `- **उद्देश्य**: सिलाई-कढ़ाई, किराना दुकान, हस्तशिल्प, डेयरी, ब्यूटी पार्लर व छोटे उत्पादक कार्य।\n\n` +
-        `*नोट: अंतिम पात्रता और ऋण स्वीकृति राज्य चैनेलाइजिंग एजेंसी (SCA) या अग्रणी बैंकों द्वारा भौतिक दस्तावेज सत्यापन के अधीन है।*`
-      : `### Mahila Samriddhi Yojana (MSY) for Women Entrepreneurs:\n\n` +
-        `An exclusive micro-credit scheme tailored for SC women entrepreneurs and Self-Help Groups (SHGs).\n\n` +
-        `- **Maximum Loan Limit**: Up to **₹${msy.terms.maxLoanAmountNumeric.toLocaleString('en-IN')}**\n` +
-        `- **Concessional Interest Rate**: Only **${msy.terms.interestRatePercentNumeric}% p.a.**\n` +
-        `- **Repayment Tenure**: ${msy.terms.maxTenureMonthsNumeric} months (with 3-month moratorium)\n` +
-        `- **Income Ceiling**: Annual family income up to ₹5,00,000 p.a.\n` +
-        `- **Eligible Activities**: Tailoring, handicrafts, retail grocery, dairy, beauty parlor, and micro-enterprises.\n\n` +
-        `*Note: Final eligibility and loan sanction are subject to verification of physical documents by your State Channelising Agency (SCA) or lending bank.*`;
-
-    return {
-      reply,
-      language,
-      sources,
-      suggestedQuestions: [
-        language === 'hi' ? 'महिला समृद्धि योजना के लिए कौन से दस्तावेज चाहिए?' : 'What documents are required for Mahila Samriddhi Yojana?',
-        language === 'hi' ? '₹1,40,000 के ऋण पर मासिक ईएमआई कितनी होगी?' : 'What will be the monthly EMI for a ₹1,40,000 loan?',
-        language === 'hi' ? 'क्या स्वयं सहायता समूह (SHG) भी आवेदन कर सकता है?' : 'Can Self Help Groups (SHGs) also apply?',
-      ],
-      userProfile: { ...userProfile, gender: 'female', applicant_type: 'female' },
-      toolsUsed,
-    };
-  }
-
-  // Intent 4: Green Business / E-Rickshaw
-  const isGreenQuery = lower.includes('green') || lower.includes('rickshaw') || lower.includes('ई-रिक्शा') || lower.includes('solar') || lower.includes('सौर') || lower.includes('ev');
-  if (isGreenQuery) {
-    toolsUsed.push('get_scheme_details');
-    sources.push('GBS');
-    const gbs = schemes.find((s) => s.id === 'green_business_scheme')!;
-    const reply = language === 'hi'
-      ? `### ग्रीन बिजनेस योजना (Green Business Scheme - GBS)\n\n` +
-        `यह योजना पर्यावरण-अनुकूल व्यवसाय जैसे **ई-रिक्शा**, सोलर रूफटॉप, सोलर पंप और अपशिष्ट प्रबंधन इकाइयों के लिए वित्तीय सहायता प्रदान करती है।\n\n` +
-        `- **अधिकतम ऋण सहायता**: **₹${gbs.terms.maxLoanAmountNumeric.toLocaleString('en-IN')}** (परियोजना लागत का 90% तक)\n` +
-        `- **ब्याज दर**: **${gbs.terms.interestRatePercentNumeric}% वार्षिक** (महिला लाभार्थियों को 0.5% अतिरिक्त छूट)\n` +
-        `- **पुनर्भुगतान अवधि**: ${gbs.terms.maxTenureMonthsNumeric} महीने (6 महीने मोरटोरियम सहित)\n` +
-        `- **ई-रिक्शा के लिए अतिरिक्त आवश्यकता**: वैध ड्राइविंग लाइसेंस / कमर्शियल लाइसेंस और अधिकृत वाहन डीलर से कोटेशन।\n\n` +
-        `*नोट: अंतिम ऋण स्वीकृति आपके राज्य की चैनेलाइजिंग एजेंसी (SCA) या अधिकृत बैंक द्वारा भौतिक दस्तावेज सत्यापन के अधीन है।*`
-      : `### Green Business Scheme (GBS) - E-Rickshaws & Solar Units:\n\n` +
-        `Provides concessional credit for climate-friendly and clean-energy micro-enterprises including battery-operated E-Rickshaws, solar rooftop units, and eco-friendly transport.\n\n` +
-        `- **Max Loan Assistance**: Up to **₹${gbs.terms.maxLoanAmountNumeric.toLocaleString('en-IN')}** (up to 90% of unit cost)\n` +
-        `- **Interest Rate**: **${gbs.terms.interestRatePercentNumeric}% p.a.** (0.5% rebate for women entrepreneurs)\n` +
-        `- **Repayment Tenure**: ${gbs.terms.maxTenureMonthsNumeric} months (with 6-month gestation moratorium)\n` +
-        `- **For E-Rickshaw Applicants**: Requires a valid Commercial Driving License and official proforma invoice from an authorized dealer.\n\n` +
-        `*Note: Final eligibility and loan sanction are subject to verification of physical documents by your State Channelising Agency (SCA) or lending bank.*`;
-
-    return {
-      reply,
-      language,
-      sources,
-      suggestedQuestions: [
-        language === 'hi' ? 'ई-रिक्शा ऋण पर मासिक किस्त (EMI) कितनी होगी?' : 'What is the monthly EMI for an E-Rickshaw loan?',
-        language === 'hi' ? 'इसके लिए कौन से दस्तावेज जमा करने होंगे?' : 'What documents must be submitted?',
-        language === 'hi' ? 'नजदीकी राज्य एससी निगम (SCA) कार्यालय कहाँ है?' : 'Where is my State Channelising Agency (SCA) office?',
-      ],
-      userProfile: { ...userProfile, business_type: 'e_rickshaw', purpose: 'business' },
-      toolsUsed,
-    };
-  }
-
-  // Intent 5: Channel Partners / Where to apply
-  const isPartnerQuery = lower.includes('partner') || lower.includes('where to apply') || lower.includes('कहाँ आवेदन') || lower.includes('bank') || lower.includes('sca') || lower.includes('office') || lower.includes('branch');
-  if (isPartnerQuery) {
-    toolsUsed.push('search_channel_partners');
-    const partnerList = executeTool('search_channel_partners', { state: userProfile.state || '' });
-    const reply = language === 'hi'
-      ? `### आप आवेदन कहाँ और कैसे कर सकते हैं (चैनल पार्टनर्स):\n\n` +
-        `एनएसएफडीसी (NSFDC) योजनाओं के तहत ऋण सीधे एनएसएफडीसी से नहीं, बल्कि अधिकृत **राज्य चैनेलाइजिंग एजेंसियों (SCA)**, सार्वजनिक क्षेत्र के बैंकों और क्षेत्रीय ग्रामीण बैंकों (RRB) के माध्यम से वितरित किए जाते हैं:\n\n` +
-        `1. **राज्य अनुसूचित जाति वित्त एवं विकास निगम (SCA)**: प्रत्येक राज्य में जिला मुख्यालयों (Vikas Bhawan / कलेक्ट्रेट) में स्थित।\n` +
-        `2. **अग्रणी सार्वजनिक क्षेत्र के बैंक**: जैसे पंजाब नेशनल बैंक (PNB), भारतीय स्टेट बैंक (SBI) आदि।\n` +
-        `3. **क्षेत्रीय ग्रामीण बैंक (RRB)** और अधिकृत NBFC-MFI सूक्ष्म वित्त संस्थान।\n\n` +
-        `आप वेबसाइट के **"Channel Partner Locator"** टैब पर जाकर अपने जिले के नजदीकी कार्यालय का पता, फोन नंबर और कार्य समय देख सकते हैं।\n\n` +
-        `*नोट: अंतिम ऋण स्वीकृति भौतिक दस्तावेजों के सत्यापन के अधीन है।*`
-      : `### Where and How to Apply (Channel Partner Network):\n\n` +
-        `NSFDC concessional loans are disbursed at the grassroots level through authorized **State Channelising Agencies (SCAs)**, Public Sector Banks, and Regional Rural Banks (RRBs):\n\n` +
-        `1. **State SC Finance & Development Corporations (SCA)**: Located in every state/UT at District Headquarters (usually inside Vikas Bhawan / Collectorate).\n` +
-        `2. **Public Sector Banks**: Lead District Offices of PNB, SBI, and other scheduled commercial banks.\n` +
-        `3. **Regional Rural Banks (RRB)** & authorized Micro-Finance Institutions (MFIs).\n\n` +
-        `You can find exact office addresses, phone numbers, and working hours in the **Channel Partner Locator** tab on this portal.\n\n` +
-        `*Note: Final loan sanction is subject to verification of physical documents by the partner branch.*`;
-
-    return {
-      reply,
-      language,
-      sources: ['MCF', 'TLS'],
-      suggestedQuestions: [
-        language === 'hi' ? 'आवेदन के साथ कौन से दस्तावेज संलग्न करने हैं?' : 'Which documents must be attached with the application?',
-        language === 'hi' ? 'ऋण स्वीकृत होने में कितना समय लगता है?' : 'How long does the loan sanction process take?',
-        language === 'hi' ? 'क्या महिलाओं के लिए विशेष ब्याज छूट उपलब्ध है?' : 'Is there a special interest rebate for women?',
-      ],
-      userProfile,
-      toolsUsed,
-    };
-  }
-
-  // Intent 6: Student & Education Schemes
-  const isStudentQuery = lower.includes('student') || lower.includes('education') || lower.includes('छात्र') || lower.includes('शिक्षा') || lower.includes('study') || lower.includes('college') || lower.includes('btech') || lower.includes('degree') || lower.includes('els');
-  if (isStudentQuery) {
-    toolsUsed.push('get_scheme_details');
-    sources.push('ELS');
-    const els = schemes.find((s) => s.id === 'educational_loan_scheme')!;
-    const reply = language === 'hi'
-      ? `### शिक्षा ऋण योजना (Educational Loan Scheme - ELS)\n\n` +
-        `यह योजना अनुसूचित जाति व पिछड़े वर्ग के विद्यार्थियों को भारत एवं विदेशों में उच्च, तकनीकी व व्यावसायिक शिक्षा प्राप्त करने के लिए रियायती ब्याज दर पर ऋण प्रदान करती है।\n\n` +
-        `- **अधिकतम ऋण सीमा**: भारत में अध्ययन हेतु **₹20 लाख** तक | विदेश में अध्ययन हेतु **₹30 लाख** तक\n` +
-        `- **रियायती ब्याज दर**: केवल **4.0% वार्षिक** | **छात्राओं (Girl Students) के लिए विशेष छूट: 3.5% वार्षिक**\n` +
-        `- **मोरटोरियम (Gestation Period)**: पाठ्यक्रम की पूर्ण अवधि + 6 महीने या नौकरी मिलने तक (जो भी पहले हो)\n` +
-        `- **पुनर्भुगतान अवधि**: मोरटोरियम समाप्त होने के बाद 5 से 10 वर्ष\n` +
-        `- **पात्र पाठ्यक्रम**: इंजीनियरिंग, मेडिकल, एमबीए, कानून, बी.टेक, एमसीए, पॉलिटेक्निक व मान्यता प्राप्त डिग्री कोर्स।\n\n` +
-        `*नोट: अंतिम पात्रता और ऋण स्वीकृति संबंधित राज्य चैनेलाइजिंग एजेंसी (SCA) या बैंक द्वारा भौतिक दस्तावेज सत्यापन के अधीन है।*`
-      : `### Educational Loan Scheme (ELS) for Higher Education:\n\n` +
-        `Provides concessional financial assistance to eligible students pursuing full-time professional, technical, and doctoral degrees in India or abroad.\n\n` +
-        `- **Maximum Loan Limit**: Up to **₹20.00 Lakhs** for studies in India | Up to **₹30.00 Lakhs** for overseas studies\n` +
-        `- **Concessional Interest Rate**: **4.0% p.a.** | **Special rebate for Girl Students: 3.5% p.a.**\n` +
-        `- **Moratorium / Gestation Period**: Full course duration + 6 months or until securing employment (whichever is earlier)\n` +
-        `- **Repayment Tenure**: Up to 120 months (10 years) following the moratorium\n` +
-        `- **Eligible Courses**: Engineering, MBBS/BDS, MBA, MCA, Law, Polytechnic, and recognized university degree programs.\n\n` +
-        `*Note: Final eligibility and loan sanction are subject to verification of admission and academic documents by your State Channelising Agency (SCA) or lending bank.*`;
-
-    return {
-      reply,
-      language,
-      sources,
-      suggestedQuestions: [
-        language === 'hi' ? 'शिक्षा ऋण के लिए कौन से शैक्षणिक दस्तावेज चाहिए?' : 'What academic documents are needed for education loans?',
-        language === 'hi' ? 'छात्राओं के लिए 3.5% ब्याज दर के क्या नियम हैं?' : 'How does the 3.5% interest rate for girl students work?',
-        language === 'hi' ? 'क्या विदेश में पढ़ाई के लिए भी ऋण मिल सकता है?' : 'Can I get a loan for overseas higher education?',
-      ],
-      userProfile: { ...userProfile, purpose: 'education', business_type: 'higher_education' },
-      toolsUsed,
-    };
-  }
-
-  // Intent 7: Farmer & Agri-Allied Schemes
-  const isFarmerQuery = lower.includes('farmer') || lower.includes('kisan') || lower.includes('किसान') || lower.includes('कृषि') || lower.includes('dairy') || lower.includes('डेयरी') || lower.includes('agriculture') || lower.includes('animal husbandry') || lower.includes('poultry') || lower.includes('tractor');
-  if (isFarmerQuery) {
-    toolsUsed.push('get_scheme_details');
-    sources.push('TLS', 'GBS');
-    const reply = language === 'hi'
-      ? `### किसानों व ग्रामीण उद्यमियों हेतु सरकारी योजनाएं (Farmer & Agri-Allied Schemes):\n\n` +
-        `एनएसएफडीसी (NSFDC) एवं सामाजिक न्याय मंत्रालय किसानों, डेयरी उत्पादकों व कृषि-संबद्ध व्यवसायों को निम्नलिखित रियायती ऋण सहायता प्रदान करता है:\n\n` +
-        `1. **डेयरी व पशुपालन (Dairy & Animal Husbandry)**:\n` +
-        `   - गाय/भैंस पालन, चारा इकाई, पोल्ट्री व मत्स्य पालन हेतु **टर्म लोन योजना (TLS)** के अंतर्गत ₹10 लाख तक 6% वार्षिक दर पर।\n` +
-        `2. **कृषि परिवहन व उपकरण (Agri Transport & Machinery)**:\n` +
-        `   - ट्रैक्टर, ट्रॉली, थ्रेशर एवं कृषि उत्पाद ढुलाई के लिए वाणिज्यिक वाहनों हेतु 90% तक वित्तीय सहायता।\n` +
-        `3. **सोलर कृषि पंप व कोल्ड स्टोरेज (Solar Agri-Pumps & Storage)**:\n` +
-        `   - **ग्रीन बिजनेस योजना (GBS)** के तहत सौर सिंचाई पंप और छोटे सोलर कोल्ड स्टोरेज के लिए ₹27 लाख तक रियायती ऋण।\n` +
-        `4. **संबद्ध केंद्रीय योजनाएं**: पीएम-किसान (PM-KISAN सम्मान निधि - ₹6,000/वर्ष) और रियायती किसान क्रेडिट कार्ड (KCC 4% ब्याज पर)।\n\n` +
-        `*नोट: अंतिम ऋण स्वीकृति राज्य चैनेलाइजिंग एजेंसी (SCA) या अग्रणी बैंकों द्वारा भूमि रिकॉर्ड/परियोजना कोटेशन के भौतिक सत्यापन के अधीन है।*`
-      : `### Schemes for Farmers & Agri-Allied Entrepreneurs:\n\n` +
-        `Government concessional credit support for rural livelihoods, farmers, and agriculture-allied activities:\n\n` +
-        `1. **Dairy & Animal Husbandry**:\n` +
-        `   - Micro & Term loans under **Term Loan Scheme (TLS)** up to ₹10 Lakhs at 6.0% p.a. for dairy units, milch cattle, poultry, and animal sheds.\n` +
-        `2. **Farm Mechanization & Transport**:\n` +
-        `   - Concessional loans for small commercial transport, tractor-trailers, sprayers, and crop processing machinery (up to 90% project cost).\n` +
-        `3. **Solar Water Pumps & Clean Energy**:\n` +
-        `   - Under the **Green Business Scheme (GBS)**, get credit up to ₹27 Lakhs for solar rooftop units, solar-powered agricultural pump sets, and bio-waste processing.\n` +
-        `4. **Key Linked Direct Benefits**: PM-KISAN (direct transfer of ₹6,000/yr), Kisan Credit Card (KCC with 3% prompt repayment subvention), and PM Krishi Sinchayee Yojana.\n\n` +
-        `*Note: Final loan sanction is subject to land verification / project quotation by your State Channelising Agency (SCA) or rural bank.*`;
-
-    return {
-      reply,
-      language,
-      sources,
-      suggestedQuestions: [
-        language === 'hi' ? 'डेयरी फार्मिंग ऋण के लिए कौन से दस्तावेज चाहिए?' : 'What documents are required for a dairy farming loan?',
-        language === 'hi' ? 'सोलर कृषि पंप के लिए ग्रीन बिजनेस योजना में कितना ऋण मिलता है?' : 'How much loan is provided for solar pumps under Green Business?',
-        language === 'hi' ? 'किसान क्रेडिट कार्ड (KCC) के साथ इसका क्या संबंध है?' : 'How does this complement the Kisan Credit Card (KCC)?',
-      ],
-      userProfile: { ...userProfile, purpose: 'business', business_type: 'agriculture_dairy' },
-      toolsUsed,
-    };
-  }
-
-  // Intent 8: Senior Citizen Schemes
-  const isSeniorQuery = lower.includes('senior') || lower.includes('citizen') || lower.includes('वृद्ध') || lower.includes('बुजुर्ग') || lower.includes('elderly') || lower.includes('pension') || lower.includes('पेंशन') || lower.includes('vaya vandana') || lower.includes('age 60');
-  if (isSeniorQuery) {
-    sources.push('TLS', 'MCF');
-    const reply = language === 'hi'
-      ? `### वरिष्ठ नागरिकों व बुजुर्गों हेतु सरकारी कल्याणकारी योजनाएं:\n\n` +
-        `वरिष्ठ नागरिकों (आयु 60 वर्ष या अधिक) के सम्मानपूर्ण जीवन व आर्थिक सुरक्षा के लिए केंद्र व राज्य सरकारों द्वारा निम्नलिखित प्रमुख योजनाएं संचालित हैं:\n\n` +
-        `1. **इंदिरा गांधी राष्ट्रीय वृद्धावस्था पेंशन योजना (IGNOAPS)**:\n` +
-        `   - बीपीएल/कम आय वर्ग के 60+ वर्ष के बुजुर्गों को मासिक पेंशन सहायता (80+ वर्ष पर बढ़ी हुई दर)।\n` +
-        `2. **आयुष्मान भारत (PM-JAY Senior Citizen 70+)**:\n` +
-        `   - 70 वर्ष और उससे अधिक आयु के सभी वरिष्ठ नागरिकों के लिए ₹5,00,000 तक का निःशुल्क वार्षिक स्वास्थ्य बीमा सुरक्षा कवच (आय की कोई सीमा नहीं)।\n` +
-        `3. **वरिष्ठ नागरिकों हेतु स्व-रोजगार ऋण (Self-Employment Loans)**:\n` +
-        `   - यदि वरिष्ठ नागरिक (65 वर्ष तक) छोटा व्यवसाय, परचून दुकान, हस्तशिल्प या सेवा केंद्र चलाना चाहते हैं, तो वे **माइक्रो क्रेडिट फाइनेंस (MCF)** के तहत ₹1.40 लाख तक 5% ब्याज पर ऋण प्राप्त कर सकते हैं।\n` +
-        `4. **अटल पेंशन योजना (APY) व वरिष्ठ सुरक्षा योजनाएं**: 60 वर्ष के पश्चात निश्चित मासिक पेंशन सुरक्षा।\n\n` +
-        `*नोट: पेंशन व स्वास्थ्य कार्ड के लिए अपने नजदीकी सीएससी (CSC) या जिला समाज कल्याण विभाग से संपर्क करें।*`
-      : `### Welfare & Financial Schemes for Senior Citizens:\n\n` +
-        `Key government support initiatives designed for elderly citizens (aged 60 and above):\n\n` +
-        `1. **Ayushman Bharat Health Cover (All Seniors 70+)**:\n` +
-        `   - Comprehensive health insurance coverage up to **₹5,00,000 per family per year** for all citizens aged 70+, regardless of income.\n` +
-        `2. **Indira Gandhi National Old Age Pension Scheme (IGNOAPS)**:\n` +
-        `   - Monthly social security pension for seniors aged 60+ belonging to low-income households (enhanced benefit for 80+ years).\n` +
-        `3. **Self-Employment Concessional Credit (Up to Age 65)**:\n` +
-        `   - Seniors seeking active livelihood (retail shop, tailoring, advisory services) can avail **Micro Credit Finance (MCF)** loans up to ₹1.40 Lakhs at 5.0% p.a.\n` +
-        `4. **Atal Pension Yojana (APY) & Senior Savings**:\n` +
-        `   - Guaranteed monthly pension schemes backed by the Government of India and higher interest rates on Senior Citizen Savings Scheme (SCSS).\n\n` +
-        `*Note: For pension and health card enrollment, visit your local Common Service Center (CSC) or District Social Welfare Department.*`;
-
-    return {
-      reply,
-      language,
-      sources,
-      suggestedQuestions: [
-        language === 'hi' ? '70+ वरिष्ठ नागरिकों के लिए आयुष्मान कार्ड कैसे बनवाएं?' : 'How do senior citizens (70+) apply for the Ayushman card?',
-        language === 'hi' ? 'वृद्धावस्था पेंशन के लिए आय सीमा क्या है?' : 'What is the income ceiling for old age pensions?',
-        language === 'hi' ? 'वरिष्ठ नागरिक दुकान शुरू करने के लिए कितना ऋण ले सकते हैं?' : 'How much concessional credit can senior citizens borrow for a shop?',
-      ],
-      userProfile,
-      toolsUsed,
-    };
-  }
-
-  // Intent 9: Check Eligibility Direct
-  const isEligibilityQuery = lower.includes('check eligibility') || lower.includes('eligibility') || lower.includes('पात्रता') || lower.includes('eligible') || lower.includes('योग्यता');
-  if (isEligibilityQuery) {
-    toolsUsed.push('check_scheme_eligibility');
-    sources.push('MCF', 'TLS', 'MSY');
-    const reply = language === 'hi'
-      ? `### योजना पात्रता मानदंड जांच (Eligibility Checklist):\n\n` +
-        `योजना सेतु पोर्टल पर उपलब्ध योजनाओं के मुख्य पात्रता नियम इस प्रकार हैं:\n\n` +
-        `1. **सामाजिक वर्ग (Category)**: अनुसूचित जाति (SC), सफाई कर्मचारी, पिछड़े वर्ग (OBC) और आर्थिक रूप से कमजोर वर्ग।\n` +
-        `   - **वर्ग अनुसार ईएमआई राहत**: जनरल (₹6,499), ओबीसी (₹5,999), एससी (₹5,499), एसटी (₹4,999) प्रति ₹2 लाख ऋण पर।\n` +
-        `2. **पारिवारिक आय सीमा (Income Ceiling)**: कुल वार्षिक पारिवारिक आय **₹5,00,000 (5 लाख रुपये) से कम** होनी चाहिए।\n` +
-        `3. **आयु सीमा (Age Limit)**: 18 वर्ष से 65 वर्ष।\n` +
-        `4. **महिला उद्यमियों को विशेष लाभ**: महिला समृद्धि योजना (MSY) में 4% ब्याज तथा अन्य योजनाओं में **0.5% अतिरिक्त ब्याज छूट**।\n` +
-        `5. **आवश्यक आधारभूत दस्तावेज**: जाति प्रमाण पत्र, आय प्रमाण पत्र, आधार कार्ड, बैंक खाता पासबुक और परियोजना कोटेशन।\n\n` +
-        `आप पोर्टल के **"Scheme Recommender"** टैब में अपनी आयु, राज्य और आय दर्ज करके तुरंत अपने लिए अनुशंसित योजनाएं देख सकते हैं।\n\n` +
-        `*नोट: अंतिम पात्रता और ऋण स्वीकृति भौतिक दस्तावेज सत्यापन के अधीन है।*`
-      : `### Scheme Eligibility Criteria Checklist:\n\n` +
-        `To qualify for NSFDC concessional loans and government schemes on Yojna Setu, verify these primary benchmarks:\n\n` +
-        `1. **Target Group / Category**:\n` +
-        `   - Scheduled Castes (SC), Safai Karamcharis (Sanitation Workers), Other Backward Classes (OBC), and Artisans.\n` +
-        `   - **Category Subventions (₹2 Lakhs Loan / 36M)**: General: ₹6,499/mo | OBC: ₹5,999/mo (-₹500 relief) | SC: ₹5,499/mo (-₹1,000 relief) | ST: ₹4,999/mo (-₹1,500 relief).\n` +
-        `2. **Annual Family Income Ceiling**: Household annual income must be **≤ ₹5,00,000 p.a.**\n` +
-        `3. **Age Criteria**: 18 to 65 years at the time of application.\n` +
-        `4. **Affirmative Gender Rebate**: Women entrepreneurs receive a **0.5% p.a. interest rebate** and exclusive access to Mahila Samriddhi Yojana (4.0% p.a.).\n` +
-        `5. **Mandatory Documentation**: Digital Caste Certificate, Income Certificate (< ₹5L), Aadhaar card, Active bank passbook, and Equipment/Project Quotation.\n\n` +
-        `You can also use the interactive **Scheme Recommender** tab to get your precise match score and loan cap.\n\n` +
-        `*Note: Final sanction is subject to physical verification by your State Channelising Agency (SCA) or lead public sector bank.*`;
-
-    return {
-      reply,
-      language,
-      sources,
-      suggestedQuestions: [
-        language === 'hi' ? 'मेरी ₹3 लाख आय पर कौन सा ऋण मिल सकता है?' : 'What schemes are available for ₹3 Lakh income?',
-        language === 'hi' ? 'महिला समृद्धि योजना के क्या नियम हैं?' : 'What are the rules for Mahila Samriddhi Yojana?',
-        language === 'hi' ? 'आवेदन के साथ कौन से दस्तावेज जमा करने होते हैं?' : 'Which documents must be submitted with the application?',
-      ],
-      userProfile,
-      toolsUsed,
-    };
-  }
-
-  // Intent 10: Find a Scheme / Discover
-  const isFindSchemeQuery = lower.includes('find a scheme') || lower.includes('find scheme') || lower.includes('योजना खोजें') || lower.includes('योजनाएं खोजें') || lower.includes('योजना बताओ');
-  if (isFindSchemeQuery) {
-    toolsUsed.push('get_all_schemes');
-    sources.push('MCF', 'TLS', 'MSY', 'GBS', 'ELS');
-    const reply = language === 'hi'
-      ? `### आपके लिए सर्वोत्तम सरकारी योजना खोजें:\n\n` +
-        `योजना सेतु पर आपकी व्यावसायिक व शैक्षणिक आवश्यकताओं के अनुसार प्रमुख योजनाएं:\n\n` +
-        `1. **लघु व्यापार, दुकान व कारीगर**: **लघु ऋण वित्त (MCF)** — ₹1.40 लाख तक 5% ब्याज दर पर।\n` +
-        `2. **महिला उद्यमी व स्वयं सहायता समूह**: **महिला समृद्धि योजना (MSY)** — ₹1.40 लाख तक विशेष 4% ब्याज पर।\n` +
-        `3. **वाणिज्यिक वाहन, ई-रिक्शा व सोलर**: **ग्रीन बिजनेस योजना (GBS)** — ₹27 लाख तक 6% ब्याज पर (ई-रिक्शा हेतु 90% लागत)।\n` +
-        `4. **बड़ा व्यापार या विनिर्माण**: **टर्म लोन योजना (TLS)** — ₹45 लाख तक 6% से 9.5% ब्याज पर।\n` +
-        `5. **उच्च शिक्षा (इंजीनियरिंग, मेडिकल, एमबीए)**: **शिक्षा ऋण योजना (ELS)** — ₹20 लाख तक 4% ब्याज (छात्राओं हेतु 3.5%)।\n` +
-        `6. **स्वच्छता उपकरण व अपशिष्ट प्रबंधन**: **स्वच्छता उद्यमी योजना (SUY)** — ₹45 लाख तक 4.5% ब्याज पर।\n\n` +
-        `कृपया बताएं: **आप किस कार्य या व्यवसाय के लिए ऋण चाहते हैं** और आपकी अनुमानित लागत कितनी है? मैं आपके लिए सटीक ईएमआई और पात्रता निकाल दूंगा।`
-      : `### Find the Perfect Government Scheme for Your Needs:\n\n` +
-        `Explore verified concessional schemes tailored to your occupation and project requirements:\n\n` +
-        `1. **Small Retail, Vendors & Artisans**: **Micro Credit Finance (MCF)** — Loans up to ₹1.40 Lakhs at 5.0% p.a.\n` +
-        `2. **Women Entrepreneurs & SHGs**: **Mahila Samriddhi Yojana (MSY)** — Up to ₹1.40 Lakhs at only 4.0% p.a.\n` +
-        `3. **E-Rickshaw, Solar & Eco-transport**: **Green Business Scheme (GBS)** — Up to ₹27.00 Lakhs at 6.0% p.a. (up to 90% vehicle funding).\n` +
-        `4. **Commercial Units & Industry**: **Term Loan Scheme (TLS)** — Up to ₹45.00 Lakhs for enterprise scaling.\n` +
-        `5. **Higher & Professional Education**: **Educational Loan Scheme (ELS)** — Up to ₹20.00 Lakhs at 4.0% p.a. (3.5% for girl students).\n` +
-        `6. **Sanitation & Mechanized Equipment**: **Swachhta Udayami Yojana (SUY)** — Up to ₹45.00 Lakhs at 4.5% p.a.\n\n` +
-        `**Tell me**: What kind of activity or business do you plan to start, and what is your required loan amount? I will calculate your eligibility and monthly EMI!`;
-
-    return {
-      reply,
-      language,
-      sources,
-      suggestedQuestions: [
-        language === 'hi' ? 'ई-रिक्शा खरीदने के लिए ग्रीन बिजनेस योजना में कितना ऋण मिलेगा?' : 'How much loan for an E-Rickshaw under Green Business Scheme?',
-        language === 'hi' ? 'महिला समृद्धि योजना के लिए क्या नियम हैं?' : 'What are the rules for Mahila Samriddhi Yojana?',
-        language === 'hi' ? '₹2 लाख के ऋण पर मासिक ईएमआई कितनी होगी?' : 'What is the monthly EMI for a ₹2 Lakh loan?',
-      ],
-      userProfile,
-      toolsUsed,
-    };
-  }
-
-  // Default Overview / Discovery
-  toolsUsed.push('get_all_schemes');
-  sources.push('MCF', 'TLS', 'ELS', 'MSY', 'GBS', 'SUY');
-  const reply = language === 'hi'
-    ? `### नमस्ते! मैं योजना सेतु सहायक (Yojna Setu Assistant) हूँ।\n\n` +
-      `मैं सामाजिक न्याय और अधिकारिता मंत्रालय (MoSJE) एवं एनएसएफडीसी (NSFDC) की रियायती ऋण योजनाओं के बारे में आपकी सहायता के लिए तैयार हूँ।\n\n` +
-      `हमारे सत्यापित डेटाबेस में निम्नलिखित मुख्य योजनाएं उपलब्ध हैं:\n\n` +
-      `1. **लघु ऋण वित्त योजना (MCF)**: छोटे व्यवसाय, दुकानदारों व कारीगरों के लिए ₹1.40 लाख तक 5% ब्याज दर पर।\n` +
-      `2. **महिला समृद्धि योजना (MSY)**: अनुसूचित जाति की महिला उद्यमियों के लिए विशेष 4% ब्याज दर पर ₹1.40 लाख तक।\n` +
-      `3. **ग्रीन बिजनेस योजना (GBS)**: ई-रिक्शा, सोलर पैनल व पर्यावरण-अनुकूल उद्यमों हेतु ₹27 लाख तक 6% ब्याज दर पर।\n` +
-      `4. **टर्म लोन योजना (TLS)**: बड़े वाणिज्यिक, निर्माण व सेवा उद्योगों हेतु ₹45 लाख तक।\n` +
-      `5. **शिक्षा ऋण योजना (ELS)**: व्यावसायिक उच्च शिक्षा हेतु भारत और विदेश में ₹20 लाख तक 4% ब्याज दर पर।\n` +
-      `6. **स्वच्छता उद्यमी योजना (SUY)**: सफाई कर्मचारियों के लिए मशीनीकृत स्वच्छता उपकरणों हेतु ₹45 लाख तक 4.5% ब्याज पर।\n\n` +
-      `**पात्रता नियम**: आवेदक अनुसूचित जाति (SC) से होने चाहिए तथा वार्षिक पारिवारिक आय ₹5.00 लाख से कम होनी चाहिए। महिलाओं को 0.5% अतिरिक्त ब्याज छूट मिलती है।\n\n` +
-      `*नोट: अंतिम ऋण स्वीकृति राज्य चैनेलाइजिंग एजेंसी (SCA) या बैंक द्वारा भौतिक दस्तावेज सत्यापन के अधीन है।*`
-    : `### Welcome to Yojna Setu Assistant!\n\n` +
-      `I am your official AI Guidance Assistant for concessional credit schemes offered by NSFDC, Ministry of Social Justice and Empowerment (MoSJE), Government of India.\n\n` +
-      `Here is an overview of our verified concessional loan schemes:\n\n` +
-      `1. **Micro Credit Finance (MCF)**: Micro-loans up to ₹1.40 Lakhs at 5.0% p.a. for small vendors, artisans, and trades.\n` +
-      `2. **Mahila Samriddhi Yojana (MSY)**: Micro-credit exclusively for SC women entrepreneurs at an ultra-low 4.0% p.a. interest.\n` +
-      `3. **Green Business Scheme (GBS)**: Up to ₹27 Lakhs at 6.0% p.a. for E-rickshaws, solar rooftops, and green technologies.\n` +
-      `4. **Term Loan Scheme (TLS)**: Up to ₹45 Lakhs for viable commercial, transport, or manufacturing projects.\n` +
-      `5. **Educational Loan Scheme (ELS)**: Up to ₹20 Lakhs at 4.0% p.a. (3.5% for girl students) for professional higher education.\n` +
-      `6. **Swachhta Udayami Yojana (SUY)**: Up to ₹45 Lakhs at 4.5% p.a. for mechanized sanitation equipment to protect Safai Karamcharis.\n\n` +
-      `**Core Eligibility**: Annual family income must be ≤ ₹5.00 Lakhs p.a. Women entrepreneurs receive an additional 0.5% p.a. interest rebate.\n\n` +
-      `*Note: Final eligibility and loan sanction are subject to verification of physical documents by your State Channelising Agency (SCA) or lending bank.*`;
+  // Default Overview
+  const reply =
+    language === 'hi'
+      ? `### नमस्ते! मैं योजना सेतु सहायक हूँ।\n\n` +
+        `मैं सरकारी योजनाओं की सटीक जानकारी प्रदान करने में आपकी सहायता कर सकता हूँ:\n\n` +
+        `- **कृषि व किसान**: PM-KISAN सम्मान निधि\n` +
+        `- **स्वास्थ्य**: आयुष्मान भारत (PM-JAY)\n` +
+        `- **व्यापार व स्वरोजगार**: प्रधानमंत्री मुद्रा योजना (PMMY), लघु ऋण वित्त (MCF), महिला समृद्धि (MSY)\n` +
+        `- **कारीगर व शिल्पकार**: प्रधानमंत्री विश्वकर्मा योजना\n` +
+        `- **शिक्षा**: शिक्षा ऋण योजना (ELS), उत्तर-मैट्रिक छात्रवृत्ति\n` +
+        `- **आवास**: प्रधानमंत्री आवास योजना (PMAY)\n\n` +
+        `आप किसी भी योजना का नाम लिखकर पूछ सकते हैं (जैसे: **"What is PM Kisan?"**, **"Who is eligible?"** आदि)।`
+      : `### Welcome! I am the Yojna Setu Assistant.\n\n` +
+        `I provide direct, factual guidance on Indian government welfare and credit schemes:\n\n` +
+        `- **Farmers**: PM-KISAN (Kisan Samman Nidhi)\n` +
+        `- **Healthcare**: Ayushman Bharat (PM-JAY)\n` +
+        `- **Business & Self-Employment**: PM Mudra, Micro Credit Finance (MCF), Mahila Samriddhi (MSY)\n` +
+        `- **Artisans & Crafts**: PM Vishwakarma Scheme\n` +
+        `- **Students & Education**: Educational Loan Scheme (ELS), Post-Matric Scholarship\n` +
+        `- **Housing**: Pradhan Mantri Awas Yojana (PMAY)\n\n` +
+        `Ask about any scheme (e.g. **"What is PM Kisan?"**, **"Who can apply?"**, **"What documents are needed?"**).`;
 
   return {
     reply,
     language,
-    sources,
-    suggestedQuestions: [
-      language === 'hi' ? 'मेरी ₹3 लाख आय पर कौन सा ऋण मिल सकता है?' : 'What loan can I get with ₹3 Lakh annual family income?',
-      language === 'hi' ? 'महिला समृद्धि योजना के लिए क्या नियम हैं?' : 'What are the rules for Mahila Samriddhi Yojana?',
-      language === 'hi' ? 'ई-रिक्शा खरीदने के लिए कितना ऋण और ईएमआई होगी?' : 'How much loan and EMI for buying an E-Rickshaw?',
-    ],
+    sources: ['PM-KISAN', 'MCF', 'MSY'],
+    suggestedQuestions: ['What is PM Kisan?', 'Who can apply for PM Kisan?', 'Check schemes for students'],
     userProfile,
-    toolsUsed,
+    toolsUsed: ['get_all_schemes'],
   };
 }
 
 // -------------------------------------------------------------
-// Model Call Helper with Transient Spike Retry & Fallback
+// Model Call Helper
 // -------------------------------------------------------------
 async function generateContentWithFallback(
   ai: GoogleGenAI,
@@ -967,7 +1061,6 @@ async function generateContentWithFallback(
   tools: any[],
   systemInstruction: string
 ) {
-  // Primary model 'gemini-3.8-flash' with official modern fallback 'gemini-3.6-flash'
   const candidateModels = ['gemini-3.8-flash', 'gemini-3.6-flash'];
   let lastError: any = null;
 
@@ -987,7 +1080,6 @@ async function generateContentWithFallback(
         lastError = err;
         const errMsg = err?.message || String(err);
 
-        // If quota is exhausted or model is unavailable, immediately try next candidate model
         if (
           errMsg.includes('429') ||
           errMsg.includes('RESOURCE_EXHAUSTED') ||
@@ -1004,7 +1096,6 @@ async function generateContentWithFallback(
           errMsg.includes('500');
 
         if (isTransient && attempt === 0) {
-          // Brief pause before retrying on temporary spike
           await new Promise((resolve) => setTimeout(resolve, 600));
           continue;
         }
@@ -1020,7 +1111,7 @@ async function generateContentWithFallback(
 // Primary Chat Processor with Gemini Tool Calling
 // -------------------------------------------------------------
 export async function processAssistantChat(req: AssistantChatRequest): Promise<AssistantChatResponse> {
-  const { message, conversationHistory = [], language = 'en', locale = 'en', userProfile: initialProfile = {}, schemeContext } = req;
+  const { message, conversationHistory = [], language = 'en', userProfile: initialProfile = {}, schemeContext } = req;
   const activeLang = req.language || req.locale || 'en';
 
   if (!message || !message.trim()) {
@@ -1034,13 +1125,12 @@ export async function processAssistantChat(req: AssistantChatRequest): Promise<A
     };
   }
 
-  // Update profile using lightweight heuristic
-  let currentProfile = extractProfileFromText(message, initialProfile);
+  const activeSchemeMatch = detectActiveSchemeFromHistory(message, conversationHistory);
+  const activeSchemeName = activeSchemeMatch?.schemeName || (schemeContext ? schemeContext.name : undefined);
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.warn('GEMINI_API_KEY is not set. Executing deterministic fallback assistant.');
-    return buildFallbackResponse(message, currentProfile, activeLang, schemeContext);
+    return buildFallbackResponse(message, initialProfile, activeLang, conversationHistory);
   }
 
   try {
@@ -1053,15 +1143,12 @@ export async function processAssistantChat(req: AssistantChatRequest): Promise<A
       },
     });
 
-    // Build chat contents array preserving conversation history
     const contents: any[] = [];
 
-    // Provide context on current known profile & schemeContext
     const contextPreamble = `System Context:
-- Citizen Language Preference: ${activeLang === 'hi' ? 'Hindi (हिंदी / Hinglish)' : 'English'}
-- Current Known User Profile: ${JSON.stringify(currentProfile)}
-${schemeContext ? `- Active Scheme Under Discussion: ${JSON.stringify(schemeContext)}` : ''}
-Rule: Do NOT ask the user for information already present in the Known User Profile. Ground every factual claim using the provided tools.`;
+- Language: ${activeLang === 'hi' ? 'Hindi (हिंदी / Hinglish)' : 'English'}
+${activeSchemeName ? `- Active Scheme Under Discussion: "${activeSchemeName}" (If user asks a follow-up question like "Who can apply?", "How much money?", "Documents?", answer specifically for "${activeSchemeName}")` : ''}
+- Rule: Answer the EXACT question asked concisely. Do NOT output unsolicited long essays.`;
 
     contents.push({
       role: 'user',
@@ -1070,11 +1157,11 @@ Rule: Do NOT ask the user for information already present in the Known User Prof
 
     contents.push({
       role: 'model',
-      parts: [{ text: 'Understood. I will strictly ground all scheme details, interest rates, eligibility criteria, and EMI calculations in the official NSFDC database and tools without hallucination.' }],
+      parts: [{ text: 'Understood. I will answer the exact question asked with zero hallucination and maintain active scheme context.' }],
     });
 
-    // Add prior conversation history (limit to last 6 turns to keep context fast and fresh)
-    const recentHistory = conversationHistory.slice(-6);
+    // Recent conversation turns (keep last 8 turns)
+    const recentHistory = conversationHistory.slice(-8);
     for (const item of recentHistory) {
       contents.push({
         role: item.role === 'assistant' ? 'model' : 'user',
@@ -1082,7 +1169,7 @@ Rule: Do NOT ask the user for information already present in the Known User Prof
       });
     }
 
-    // Add current user query
+    // Current user message
     contents.push({
       role: 'user',
       parts: [{ text: message }],
@@ -1105,7 +1192,6 @@ Rule: Do NOT ask the user for information already present in the Known User Prof
       const functionCalls = response.functionCalls;
 
       if (functionCalls && functionCalls.length > 0) {
-        // Execute tool calls
         const candidateContent = response.candidates?.[0]?.content;
         if (candidateContent) {
           contents.push(candidateContent);
@@ -1118,8 +1204,6 @@ Rule: Do NOT ask the user for information already present in the Known User Prof
           toolsUsed.push(fnName);
           const toolResult = executeTool(fnName, fc.args || {});
 
-          // In Gemini API, functionResponse.response MUST be a JSON Object (google.protobuf.Struct),
-          // NEVER a JSON Array or primitive. If toolResult is an array or primitive, wrap it in { output: toolResult }.
           const responsePayload: Record<string, unknown> =
             typeof toolResult === 'object' && toolResult !== null && !Array.isArray(toolResult)
               ? (toolResult as Record<string, unknown>)
@@ -1139,17 +1223,15 @@ Rule: Do NOT ask the user for information already present in the Known User Prof
           parts: functionResponseParts,
         });
       } else {
-        // We received the final text answer
         finalResponseText = response.text || '';
         break;
       }
     }
 
     if (!finalResponseText) {
-      return buildFallbackResponse(message, currentProfile, activeLang, schemeContext);
+      return buildFallbackResponse(message, initialProfile, activeLang, conversationHistory);
     }
 
-    // Extract SOURCES, SUGGESTED_QUESTIONS, and USER_PROFILE_UPDATE from model response
     let cleanReply = finalResponseText;
     let sources: string[] = [];
     let suggestedQuestions: string[] = [];
@@ -1159,7 +1241,7 @@ Rule: Do NOT ask the user for information already present in the Known User Prof
       try {
         sources = JSON.parse(sourcesMatch[1]);
       } catch {
-        // Ignore JSON parse error
+        // Ignore parse error
       }
       cleanReply = cleanReply.replace(/SOURCES:\s*(\[[^\]]*\])/gi, '').trim();
     }
@@ -1169,27 +1251,26 @@ Rule: Do NOT ask the user for information already present in the Known User Prof
       try {
         suggestedQuestions = JSON.parse(sqMatch[1]);
       } catch {
-        // Ignore JSON parse error
+        // Ignore parse error
       }
       cleanReply = cleanReply.replace(/SUGGESTED_QUESTIONS:\s*(\[[^\]]*\])/gi, '').trim();
     }
 
     const upMatch = cleanReply.match(/USER_PROFILE_UPDATE:\s*(\{[^\}]*\})/i);
     if (upMatch) {
-      try {
-        const updateObj = JSON.parse(upMatch[1]);
-        currentProfile = { ...currentProfile, ...updateObj };
-      } catch {
-        // Ignore JSON parse error
-      }
       cleanReply = cleanReply.replace(/USER_PROFILE_UPDATE:\s*(\{[^\}]*\})/gi, '').trim();
     }
 
-    // Default suggestions if model omitted them
     if (!suggestedQuestions || suggestedQuestions.length === 0) {
-      suggestedQuestions = activeLang === 'hi'
-        ? ['इस योजना के लिए कौन से दस्तावेज चाहिए?', 'मासिक ईएमआई (EMI) कितनी होगी?', 'नजदीकी चैनल पार्टनर बैंक कहाँ है?']
-        : ['What documents are required for this scheme?', 'What would be the monthly EMI?', 'Where is the nearest channel partner bank?'];
+      if (activeSchemeMatch) {
+        suggestedQuestions = [
+          `Who can apply for ${activeSchemeMatch.schemeName}?`,
+          `Which documents are needed?`,
+          `How to apply?`,
+        ];
+      } else {
+        suggestedQuestions = ['What is PM Kisan?', 'Show schemes for women', 'How to calculate EMI?'];
+      }
     }
 
     return {
@@ -1197,13 +1278,11 @@ Rule: Do NOT ask the user for information already present in the Known User Prof
       language: activeLang,
       sources,
       suggestedQuestions: suggestedQuestions.slice(0, 3),
-      userProfile: currentProfile,
+      userProfile: initialProfile,
       toolsUsed,
     };
   } catch (err: any) {
-    const errMsg = err?.message || String(err);
-    console.warn('Gemini Assistant API unavailable or rate-limited; serving verified advisory fallback:', errMsg);
-    // Graceful fallback to deterministic engine
-    return buildFallbackResponse(message, currentProfile, activeLang, schemeContext);
+    console.warn('Gemini Assistant API call failed; utilizing deterministic fallback engine:', err?.message || err);
+    return buildFallbackResponse(message, initialProfile, activeLang, conversationHistory);
   }
 }

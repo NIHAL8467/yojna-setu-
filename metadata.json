@@ -1,6 +1,6 @@
 {
   "name": "Yojna Setu",
   "description": "Scheme matching, concessional EMI calculation, and Channel Partner locator for entrepreneurs.",
-  "requestFramePermissions": ["geolocation"],
+  "requestFramePermissions": ["geolocation", "microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
