@@ -8,7 +8,7 @@ export default function YojnaWheelIllustration({ className = '' }: { className?:
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         className="w-full h-full drop-shadow-md"
-        aria-label="Yojna Setu Government Scheme Portal Wheel Illustration"
+        aria-label="USDE - Unified Scheme Discovery Ecosystem Portal Wheel Illustration"
       >
         <defs>
           <linearGradient id="wheel-navy" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -85,12 +85,12 @@ export default function YojnaWheelIllustration({ className = '' }: { className?:
         <path d="M 95 110 L 125 130" stroke="#002D5B" strokeWidth="4" />
         <path d="M 305 110 L 275 130" stroke="#002D5B" strokeWidth="4" />
 
-        {/* Central Hub Emblem - Yojna Setu E-Portal */}
+        {/* Central Hub Emblem - USDE E-Portal */}
         <g id="hub" filter="url(#soft-shadow)">
           <circle cx="200" cy="140" r="30" fill="url(#center-orange)" stroke="#FFFFFF" strokeWidth="3" />
           <circle cx="200" cy="140" r="25" fill="#FFFFFF" opacity="0.2" />
-          <text x="200" y="132" fontSize="6.5" fontWeight="bold" fill="#FFFFFF" textAnchor="middle" letterSpacing="0.5">
-            YOJNA SETU
+          <text x="200" y="132" fontSize="7" fontWeight="bold" fill="#FFFFFF" textAnchor="middle" letterSpacing="0.5">
+            USDE
           </text>
           <text x="200" y="142" fontSize="13" fontWeight="900" fill="#FFFFFF" textAnchor="middle">
             ₹

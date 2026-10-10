@@ -55,7 +55,7 @@ export interface AssistantChatResponse {
 const toolDeclarations: FunctionDeclaration[] = [
   {
     name: 'get_all_schemes',
-    description: 'Retrieve verified government schemes available on Yojna Setu (including NSFDC concessional loans and major national welfare schemes like PM-KISAN, PM-JAY, Mudra, PMAY).',
+    description: 'Retrieve verified government schemes available on USDE (Unified Scheme Discovery Ecosystem, including NSFDC concessional loans and major national welfare schemes like PM-KISAN, PM-JAY, Mudra, PMAY).',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -275,7 +275,7 @@ function executeTool(name: string, args: Record<string, any>): any {
       }
 
       return {
-        error: `Scheme '${args.schemeIdOrCode}' was not found in Yojna Setu's verified database. Available verified schemes include: PM-KISAN, PM-JAY (Ayushman Bharat), PMAY, PM Mudra, PM SVANidhi, PM Vishwakarma, Sukanya Samriddhi, Post-Matric Scholarship, MCF, TLS, ELS, MSY, GBS, SUY.`,
+        error: `Scheme '${args.schemeIdOrCode}' was not found in USDE's verified database. Available verified schemes include: PM-KISAN, PM-JAY (Ayushman Bharat), PMAY, PM Mudra, PM SVANidhi, PM Vishwakarma, Sukanya Samriddhi, Post-Matric Scholarship, MCF, TLS, ELS, MSY, GBS, SUY.`,
       };
     }
 
@@ -381,9 +381,9 @@ function executeTool(name: string, args: Record<string, any>): any {
 }
 
 // -------------------------------------------------------------
-// System Prompt for Yojna Setu Assistant
+// System Prompt for USDE Assistant
 // -------------------------------------------------------------
-const SYSTEM_PROMPT = `You are the official "Yojna Setu Assistant", dedicated to helping Indian citizens understand and discover Indian government schemes and benefits.
+const SYSTEM_PROMPT = `You are the official "USDE Assistant" (Unified Scheme Discovery Ecosystem / एकीकृत योजना खोज पारिस्थितिकी तंत्र), dedicated to helping Indian citizens understand and discover Indian government schemes and benefits.
 
 CRITICAL DIRECTIVES:
 
@@ -407,7 +407,7 @@ CRITICAL DIRECTIVES:
 - Answer using verified scheme data from the tools.
 - Do NOT invent schemes, eligibility rules, benefits, application procedures, URLs, amounts, or government facts.
 - If information is not available in the verified database, state clearly:
-  "This specific information is not currently available in Yojna Setu's verified database. Please check official government portals (such as myscheme.gov.in) or visit your local administrative office."
+  "This specific information is not currently available in USDE's verified database. Please check official government portals (such as myscheme.gov.in) or visit your local administrative office."
 
 4. DEMOGRAPHIC QUESTIONS:
 - Do NOT ask for demographic information (income, age, caste, gender) for informational questions ("What is this scheme?", "What is the benefit?", etc.).
@@ -419,14 +419,14 @@ CRITICAL DIRECTIVES:
   * Do NOT ask for demographic details unless needed.
 
 6. ACTIONS & NAVIGATION:
-- When appropriate, mention relevant Yojna Setu tools:
+- When appropriate, mention relevant USDE tools:
   * "You can open the **Smart Scheme Recommender** to check schemes based on your details."
-  * "Open the **EMI Calculator** from Yojna Setu to calculate monthly installments."
+  * "Open the **EMI Calculator** from USDE to calculate monthly installments."
   * "Use the **Channel Partner Locator** to find nearby State Channelising Agency (SCA) or bank branches."
 
 7. ERROR & OUT-OF-SCOPE QUESTIONS:
-- If the user's question is unrelated to government schemes or Yojna Setu (e.g. general trivia, coding, sports):
-  * Politely state: "I'm here to help with Indian government schemes, eligibility, benefits, documents, and Yojna Setu services. Please ask me something related to these."
+- If the user's question is unrelated to government schemes or USDE (e.g. general trivia, coding, sports):
+  * Politely state: "I'm here to help with Indian government schemes, eligibility, benefits, documents, and USDE services. Please ask me something related to these."
 
 8. LANGUAGE & TONE:
 - Courteous, respectful, concise, clear, and direct.
@@ -651,8 +651,8 @@ export function buildFallbackResponse(
   if (isOutOfScope) {
     const reply =
       language === 'hi'
-        ? 'मैं सरकारी योजनाओं, पात्रता, लाभ, आवश्यक दस्तावेजों और योजना सेतु सेवाओं में आपकी सहायता के लिए हूँ। कृपया इनसे संबंधित कोई प्रश्न पूछें।'
-        : "I'm here to help with Indian government schemes, eligibility, benefits, documents, and Yojna Setu services. Please ask me something related to these.";
+        ? 'मैं सरकारी योजनाओं, पात्रता, लाभ, आवश्यक दस्तावेजों और USDE सेवाओं में आपकी सहायता के लिए हूँ। कृपया इनसे संबंधित कोई प्रश्न पूछें।'
+        : "I'm here to help with Indian government schemes, eligibility, benefits, documents, and USDE services. Please ask me something related to these.";
     return {
       reply,
       language,
@@ -667,8 +667,8 @@ export function buildFallbackResponse(
   if (isGreeting && !activeMatch) {
     const reply =
       language === 'hi'
-        ? 'नमस्ते! मैं **योजना सेतु सहायक** हूँ। मैं सरकारी योजनाओं, पात्रता, लाभ और दस्तावेजों की सटीक जानकारी देने के लिए तैयार हूँ। आप किसी विशिष्ट योजना के बारे में पूछ सकते हैं (जैसे: **PM-KISAN**, **महिला समृद्धि योजना**, **मुद्रा योजना**, **शिक्षा ऋण**)।'
-        : "Namaste! I am the **Yojna Setu Assistant**. I provide clear, factual guidance on Indian government schemes, eligibility, benefits, and required documents. You can ask about any scheme (such as **PM-KISAN**, **Mahila Samriddhi Yojana**, **PM Mudra**, **Education Loan**).";
+        ? 'नमस्ते! मैं **USDE सहायक** (Unified Scheme Discovery Ecosystem) हूँ। मैं सरकारी योजनाओं, पात्रता, लाभ और दस्तावेजों की सटीक जानकारी देने के लिए तैयार हूँ। आप किसी विशिष्ट योजना के बारे में पूछ सकते हैं (जैसे: **PM-KISAN**, **महिला समृद्धि योजना**, **मुद्रा योजना**, **शिक्षा ऋण**)।'
+        : "Namaste! I am the **USDE Assistant** (Unified Scheme Discovery Ecosystem). I provide clear, factual guidance on Indian government schemes, eligibility, benefits, and required documents. You can ask about any scheme (such as **PM-KISAN**, **Mahila Samriddhi Yojana**, **PM Mudra**, **Education Loan**).";
     return {
       reply,
       language,
@@ -865,7 +865,7 @@ export function buildFallbackResponse(
             : `### How to Apply for ${activeNsfdc.name}:\n\n` +
               `1. Obtain the official application form from your **State Channelising Agency (SCA)** office at the District Vikas Bhawan / Collectorate, or from designated Public Sector Banks (e.g. PNB, SBI).\n` +
               `2. Attach mandatory documents (SC Caste Certificate, Income Certificate, Aadhaar, Bank passbook, and equipment quotation).\n` +
-              `3. Use the **Channel Partner Locator** tab on Yojna Setu to find office addresses and contact numbers in your district.`;
+              `3. Use the **Channel Partner Locator** tab on USDE to find office addresses and contact numbers in your district.`;
         return {
           reply,
           language,
@@ -940,7 +940,7 @@ export function buildFallbackResponse(
           `- **Monthly Installment (EMI)**: **${emiResult.monthlyEmi}**\n` +
           `- **Total Interest**: ${emiResult.totalInterestPayable}\n` +
           `- **Total Repayment**: ${emiResult.totalAmountPayable}\n\n` +
-          `You can also use the **EMI Calculator** tab on Yojna Setu for custom loan amounts and terms.`;
+          `You can also use the **EMI Calculator** tab on USDE for custom loan amounts and terms.`;
 
     return {
       reply,
@@ -985,7 +985,7 @@ export function buildFallbackResponse(
           ? `### महिला उद्यमियों व बालिकाओं हेतु प्रमुख योजनाएं:\n\n` +
             `1. **महिला समृद्धि योजना (MSY)**: अनुसूचित जाति की महिला उद्यमियों व स्वयं सहायता समूहों हेतु ₹1.40 लाख तक विशेष 4% ब्याज पर ऋण।\n` +
             `2. **सुकन्या समृद्धि योजना (SSY)**: 10 वर्ष से कम उम्र की बालिकाओं के लिए उच्च ब्याज दर (~8.2%) व कर छूट वाली बचत योजना।\n` +
-            `3. **महिला ब्याज छूट**: योजना सेतु के सभी अन्य ऋणों पर महिलाओं को 0.5% अतिरिक्त ब्याज छूट मिलती है।`
+            `3. **महिला ब्याज छूट**: USDE के सभी अन्य ऋणों पर महिलाओं को 0.5% अतिरिक्त ब्याज छूट मिलती है।`
           : `### Key Government Schemes for Women Entrepreneurs & Girls:\n\n` +
             `1. **Mahila Samriddhi Yojana (MSY)**: Exclusive micro-credit up to ₹1.40 Lakhs at only 4.0% p.a. for SC women entrepreneurs & SHGs.\n` +
             `2. **Sukanya Samriddhi Yojana (SSY)**: Government-backed savings scheme for girl children with ~8.2% interest and tax exemptions.\n` +
@@ -1023,7 +1023,7 @@ export function buildFallbackResponse(
   // Default Overview
   const reply =
     language === 'hi'
-      ? `### नमस्ते! मैं योजना सेतु सहायक हूँ।\n\n` +
+      ? `### नमस्ते! मैं USDE (Unified Scheme Discovery Ecosystem) सहायक हूँ।\n\n` +
         `मैं सरकारी योजनाओं की सटीक जानकारी प्रदान करने में आपकी सहायता कर सकता हूँ:\n\n` +
         `- **कृषि व किसान**: PM-KISAN सम्मान निधि\n` +
         `- **स्वास्थ्य**: आयुष्मान भारत (PM-JAY)\n` +
@@ -1032,7 +1032,7 @@ export function buildFallbackResponse(
         `- **शिक्षा**: शिक्षा ऋण योजना (ELS), उत्तर-मैट्रिक छात्रवृत्ति\n` +
         `- **आवास**: प्रधानमंत्री आवास योजना (PMAY)\n\n` +
         `आप किसी भी योजना का नाम लिखकर पूछ सकते हैं (जैसे: **"What is PM Kisan?"**, **"Who is eligible?"** आदि)।`
-      : `### Welcome! I am the Yojna Setu Assistant.\n\n` +
+      : `### Welcome! I am the USDE Assistant (Unified Scheme Discovery Ecosystem).\n\n` +
         `I provide direct, factual guidance on Indian government welfare and credit schemes:\n\n` +
         `- **Farmers**: PM-KISAN (Kisan Samman Nidhi)\n` +
         `- **Healthcare**: Ayushman Bharat (PM-JAY)\n` +

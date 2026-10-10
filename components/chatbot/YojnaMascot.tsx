@@ -16,7 +16,7 @@ export function YojnaMascot({ className = 'w-full h-full', size = 100 }: MascotP
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
-      aria-label="Yojna Setu Mascot"
+      aria-label="USDE Mascot"
     >
       <defs>
         {/* Background gradient */}

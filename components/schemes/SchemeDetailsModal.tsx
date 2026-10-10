@@ -32,7 +32,7 @@ export default function SchemeDetailsModal({ result, onClose }: SchemeDetailsMod
   const { scheme, estimatedInterestRate } = result;
 
   const handleShare = async () => {
-    const text = `${scheme.name} - Yojna Setu\nInterest: ~${estimatedInterestRate}% p.a.\nMax Loan: ₹${(scheme.terms.maxLoanAmountNumeric / 100000).toFixed(1)} Lakhs\nApply at your State Channelising Agency (SCA).`;
+    const text = `${scheme.name} - USDE (Unified Scheme Discovery Ecosystem)\nInterest: ~${estimatedInterestRate}% p.a.\nMax Loan: ₹${(scheme.terms.maxLoanAmountNumeric / 100000).toFixed(1)} Lakhs\nApply at your State Channelising Agency (SCA).`;
     try {
       if (navigator.share) {
         await navigator.share({

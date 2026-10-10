@@ -1,9 +1,9 @@
 {
   "common": {
-    "appName": "Yojna Setu",
-    "portalTitle": "Yojna Setu • National Scheme Bridge Portal",
+    "appName": "USDE",
+    "portalTitle": "USDE • Unified Scheme Discovery Ecosystem",
     "ministryName": "Ministry of Social Justice and Empowerment, Govt. of India",
-    "tagline": "Bridging Entrepreneurs to Concessional Credit & Government Welfare Schemes",
+    "tagline": "Unified Scheme Discovery Ecosystem for Concessional Credit & Welfare Schemes",
     "next": "Next Step",
     "back": "Back",
     "submit": "Find Matching Schemes",
@@ -133,7 +133,7 @@
     "activeBadge": "Accepting Applications"
   },
   "ai": {
-    "title": "Yojna Setu Scheme & Document Assistant",
+    "title": "USDE Scheme & Document Assistant",
     "subtitle": "Ask questions in simple English or Hindi about scheme guidelines, required documents, or application procedures.",
     "inputPlaceholder": "Ask a question (e.g., 'What documents do I need for Mahila Samriddhi?', 'How does the moratorium work?')...",
     "send": "Ask Assistant",

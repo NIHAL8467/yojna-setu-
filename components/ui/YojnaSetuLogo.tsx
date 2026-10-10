@@ -31,7 +31,7 @@ export default function YojnaSetuLogo({
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         className="shrink-0 drop-shadow-sm transition-transform duration-200 group-hover:scale-105"
-        aria-label="Yojna Setu Emblem"
+        aria-label="USDE - Unified Scheme Discovery Ecosystem Emblem"
       >
         <defs>
           {/* Gradients */}
@@ -190,19 +190,16 @@ export default function YojnaSetuLogo({
         </g>
       </svg>
 
-      {/* Typography: "Yojna Setu" */}
+      {/* Typography: "USDE" */}
       {showText && (
         <div className="flex flex-col leading-tight">
-          <div className="flex items-baseline gap-1">
+          <div className="flex items-baseline gap-1.5">
             <span className={`font-black tracking-tight text-[#003366] ${textClass}`}>
-              Yojna
-            </span>
-            <span className={`font-black tracking-tight text-[#16A34A] ${textClass}`}>
-              Setu
+              USDE
             </span>
           </div>
           <span className="hidden min-[420px]:inline-block text-[10px] text-slate-500 font-semibold tracking-wider uppercase -mt-0.5 truncate max-w-[200px] sm:max-w-none">
-            National Scheme Bridge Portal
+            Unified Scheme Discovery Ecosystem
           </span>
         </div>
       )}

@@ -87,8 +87,8 @@ export function FloatingYojnaMitra() {
       role: 'assistant',
       text:
         locale === 'hi'
-          ? "नमस्ते! 👋 मैं **योजना सेतु सहायक** हूँ। मैं सरकारी योजनाओं, पात्रता, लाभ और आवश्यक दस्तावेजों की सटीक जानकारी प्रदान करता हूँ।\n\nआप किसी भी योजना के बारे में पूछ सकते हैं (जैसे: **PM-KISAN**, **महिला समृद्धि योजना**, **मुद्रा योजना**, **शिक्षा ऋण**)।"
-          : "Namaste! 👋 I am the **Yojna Setu Assistant**. I provide clear, factual answers on Indian government schemes, benefits, eligibility, and required documents.\n\nYou can ask about any scheme (such as **PM-KISAN**, **Mahila Samriddhi**, **PM Mudra**, **Education Loan**).",
+          ? "नमस्ते! 👋 मैं **USDE (एकीकृत योजना खोज पारिस्थितिकी तंत्र) सहायक** हूँ। मैं सरकारी योजनाओं, पात्रता, लाभ और आवश्यक दस्तावेजों की सटीक जानकारी प्रदान करता हूँ।\n\nआप किसी भी योजना के बारे में पूछ सकते हैं (जैसे: **PM-KISAN**, **महिला समृद्धि योजना**, **मुद्रा योजना**, **शिक्षा ऋण**)।"
+          : "Namaste! 👋 I am the **USDE Assistant** (Unified Scheme Discovery Ecosystem). I provide clear, factual answers on Indian government schemes, benefits, eligibility, and required documents.\n\nYou can ask about any scheme (such as **PM-KISAN**, **Mahila Samriddhi**, **PM Mudra**, **Education Loan**).",
       timestamp: 'Just now',
       suggestedQuestions: [
         'What is PM Kisan?',
@@ -293,7 +293,7 @@ export function FloatingYojnaMitra() {
         data.response ||
         data.reply ||
         (locale === 'hi'
-          ? 'योजना सेतु सहायक से संपर्क नहीं हो पाया। कृपया पुनः प्रयास करें।'
+          ? 'USDE सहायक से संपर्क नहीं हो पाया। कृपया पुनः प्रयास करें।'
           : 'Unable to retrieve answer. Please try again.');
 
       const assistantMsg: ChatMessage = {
@@ -547,8 +547,8 @@ export function FloatingYojnaMitra() {
         role: 'assistant',
         text:
           locale === 'hi'
-            ? "नमस्ते! 👋 मैं **योजना सेतु सहायक** हूँ। मैं सरकारी योजनाओं, पात्रता, लाभ और आवश्यक दस्तावेजों की सटीक जानकारी प्रदान करता हूँ।\n\nआप किसी भी योजना के बारे में पूछ सकते हैं (जैसे: **PM-KISAN**, **महिला समृद्धि योजना**, **मुद्रा योजना**, **शिक्षा ऋण**)।"
-            : "Namaste! 👋 I am the **Yojna Setu Assistant**. I provide clear, factual answers on Indian government schemes, benefits, eligibility, and required documents.\n\nYou can ask about any scheme (such as **PM-KISAN**, **Mahila Samriddhi**, **PM Mudra**, **Education Loan**).",
+            ? "नमस्ते! 👋 मैं **USDE (एकीकृत योजना खोज पारिस्थितिकी तंत्र) सहायक** हूँ। मैं सरकारी योजनाओं, पात्रता, लाभ और आवश्यक दस्तावेजों की सटीक जानकारी प्रदान करता हूँ।\n\nआप किसी भी योजना के बारे में पूछ सकते हैं (जैसे: **PM-KISAN**, **महिला समृद्धि योजना**, **मुद्रा योजना**, **शिक्षा ऋण**)।"
+            : "Namaste! 👋 I am the **USDE Assistant** (Unified Scheme Discovery Ecosystem). I provide clear, factual answers on Indian government schemes, benefits, eligibility, and required documents.\n\nYou can ask about any scheme (such as **PM-KISAN**, **Mahila Samriddhi**, **PM Mudra**, **Education Loan**).",
         timestamp: 'Just now',
         suggestedQuestions: [
           'What is PM Kisan?',
@@ -714,8 +714,8 @@ export function FloatingYojnaMitra() {
               onClick={() => setIsOpen(true)}
               aria-expanded={isOpen}
               aria-controls="yojna-mitra-chat-window"
-              aria-label="Open Yojna Setu Assistant"
-              title="Yojna Setu Assistant"
+              aria-label="Open USDE Assistant"
+              title="USDE Assistant"
               className="group relative w-14 h-14 sm:w-16 sm:h-16 lg:w-18 lg:h-18 rounded-full p-0 flex items-center justify-center bg-[#1a3d82] shadow-2xl shadow-blue-950/40 border-2 border-white/90 transition-all cursor-pointer select-none focus:outline-none focus:ring-4 focus:ring-blue-400/50 focus:ring-offset-2"
             >
               {/* Speech bubble */}
@@ -724,7 +724,7 @@ export function FloatingYojnaMitra() {
                 className="absolute -top-9 sm:-top-11 right-0 sm:right-1 flex flex-col items-center select-none pointer-events-none drop-shadow-md transition-transform group-hover:-translate-y-0.5"
               >
                 <div className="bg-[#1a386d] text-white text-[11px] sm:text-xs font-bold tracking-wide px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-2xl shadow-lg border border-white/20 whitespace-nowrap">
-                  Yojna Setu
+                  USDE
                 </div>
                 <div className="w-2.5 h-2.5 bg-[#1a386d] rotate-45 -mt-1.5 border-r border-b border-white/10" />
               </div>
@@ -752,7 +752,7 @@ export function FloatingYojnaMitra() {
           <motion.div
             id="yojna-mitra-chat-window"
             role="dialog"
-            aria-label="Yojna Setu AI Government Scheme Assistant"
+            aria-label="USDE AI Government Scheme Assistant"
             aria-modal="false"
             initial={{ opacity: 0, scale: 0.9, y: 30, transformOrigin: 'bottom right' }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -780,7 +780,7 @@ export function FloatingYojnaMitra() {
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <h3 className="font-bold text-white text-sm sm:text-base tracking-tight leading-none truncate">
-                      Yojna Setu Assistant
+                      USDE Assistant
                     </h3>
                     <span className="text-[9px] sm:text-[10px] font-semibold bg-blue-800/80 text-amber-300 px-1.5 py-0.5 rounded border border-amber-400/30">
                       Gov Guide
@@ -1067,7 +1067,7 @@ export function FloatingYojnaMitra() {
                       <span className="w-2 h-2 rounded-full bg-blue-700 animate-bounce [animation-delay:-0.15s]" />
                       <span className="w-2 h-2 rounded-full bg-blue-500 animate-bounce" />
                       <span className="text-[11px] sm:text-xs text-slate-500 ml-1 font-medium truncate">
-                        {locale === 'hi' ? 'योजना सेतु सहायक जानकारी तैयार कर रहा है...' : 'Yojna Setu Assistant is preparing your answer...'}
+                        {locale === 'hi' ? 'USDE सहायक जानकारी तैयार कर रहा है...' : 'USDE Assistant is preparing your answer...'}
                       </span>
                     </div>
                   </div>
@@ -1243,7 +1243,7 @@ export function FloatingYojnaMitra() {
                   id="yojna-mitra-send-btn"
                   type="submit"
                   disabled={!inputMessage.trim() || isLoading || isListening || isTranscribing}
-                  aria-label="Send message to Yojna Setu Assistant"
+                  aria-label="Send message to USDE Assistant"
                   className="p-2 sm:p-2.5 bg-blue-950 hover:bg-blue-900 text-white rounded-xl disabled:opacity-40 disabled:hover:bg-blue-950 transition-colors cursor-pointer shrink-0 focus:outline-none focus:ring-2 focus:ring-amber-400"
                 >
                   {isLoading ? (

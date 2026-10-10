@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
 
     // Model selection: Try gemini-3.5-transcribe first, fallback to gemini-3.8-flash if needed
     let transcript = '';
-    const prompt = `You are a speech-to-text transcriber for Yojna Setu, an Indian government welfare schemes portal.
+    const prompt = `You are a speech-to-text transcriber for USDE (Unified Scheme Discovery Ecosystem), an Indian government welfare schemes portal.
 Transcribe the spoken audio query accurately.
 The speaker may speak in Hindi, Indian English, or mixed Hinglish.
 Target language preference: ${language === 'hi' ? 'Hindi or Hinglish' : 'English or Hindi'}.

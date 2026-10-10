@@ -64,7 +64,7 @@ export default function Header() {
             type="button"
             onClick={() => handleNavClick('home')}
             className="flex items-center gap-2 text-left group cursor-pointer focus:outline-none shrink-0"
-            aria-label="Yojna Setu Home"
+            aria-label="USDE (Unified Scheme Discovery Ecosystem) Home"
           >
             <YojnaSetuLogo size="md" showText={true} />
           </button>
@@ -181,7 +181,7 @@ export default function Header() {
           <div className="pb-2 mb-1 border-b border-slate-100 flex items-center justify-between text-xs text-slate-500 font-semibold px-2">
             <span>Navigation Menu</span>
             <span className="text-[11px] bg-blue-50 text-blue-900 px-2 py-0.5 rounded font-bold">
-              Yojna Setu
+              USDE
             </span>
           </div>
 

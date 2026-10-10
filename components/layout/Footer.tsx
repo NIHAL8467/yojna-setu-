@@ -12,13 +12,13 @@ export default function Footer() {
     <footer id="main-footer" className="bg-white text-slate-700 text-sm border-t border-slate-200 mt-16 pb-20 lg:pb-8 shadow-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Col 1: About Yojna Setu */}
+          {/* Col 1: About USDE */}
           <div className="md:col-span-2 space-y-3.5">
             <div className="inline-block">
               <YojnaSetuLogo size="md" showText={true} />
             </div>
             <p className="text-xs text-slate-600 leading-relaxed max-w-xl">
-              Yojna Setu connects aspiring entrepreneurs and students with concessional credit, government loan subsidies, reducing-balance amortizations, and authorized State Channelising Agencies.
+              USDE (Unified Scheme Discovery Ecosystem) connects aspiring entrepreneurs and students with concessional credit, government loan subsidies, reducing-balance amortizations, and authorized State Channelising Agencies.
             </p>
             <div className="flex flex-wrap items-center gap-2.5 pt-1">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-900 text-xs font-semibold border border-amber-200">
@@ -96,7 +96,7 @@ export default function Footer() {
 
         <div className="border-t border-slate-200 mt-8 pt-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-500 font-medium">
           <p className="flex items-center gap-1.5">
-            © 2026 Yojna Setu • Designed and built by Developers
+            © 2026 USDE (Unified Scheme Discovery Ecosystem) • Designed and built by Developers
             <Heart className="w-3 h-3 text-rose-500 inline fill-rose-500" />
           </p>
           <p>National Scheme Bridge for Welfare & Concessional Credit</p>
